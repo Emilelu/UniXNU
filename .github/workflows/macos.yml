@@ -36,6 +36,10 @@ on:
         description: Optional shell commands run in the UniXNU checkout before the kernel build
         required: false
         default: ""
+      upload_kernel:
+        description: Upload the native kernel (built from apple-oss-distributions/xnu; never the prelinked one)
+        type: boolean
+        default: false
       trust_cache_url:
         description: Trust cache bundle URL (optional; masked in the logs)
         required: false
@@ -216,6 +220,20 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: ./unixnu build kernel
 
+      - name: Upload the native kernel
+        # Opt-in. The native kernel is built from apple-oss-distributions/xnu and the patches in this repository,
+        # so it carries no Apple kexts; the prelinked kernel does, and is never uploaded. One day of retention:
+        # the artifact exists to be downloaded once.
+        if: always() && inputs.upload_kernel
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unixnu-${{ steps.check.outputs.board }}-native-kernel-${{ github.run_attempt }}
+          path: |
+            ${{ steps.check.outputs.work }}/tree/build/xnu/ios-obj/*/mach.*.unstripped
+            ${{ steps.check.outputs.work }}/kernel/kernel.macho.json
+          if-no-files-found: warn
+          retention-days: 1
+
       - name: Build userdata
         id: userdata
         if: contains(inputs.steps, 'userdata')
@@ -305,7 +323,7 @@ jobs:
             echo "| userdata | ${USERDATA:-skipped} |"
             echo "| payload | ${PAYLOAD:-skipped} |"
             echo
-            echo "This workflow only checks that the build works. It publishes text logs (7 days) and no images."
+            echo "This workflow only checks that the build works. It publishes text logs (7 days) and no images; with upload_kernel it also publishes the native kernel for one day."
             # `xcodebuild -version | head -n 1` aborts xcodebuild with SIGPIPE
             # (exit 134) and fails the whole job even when the kernel built,
             # so keep the first line without closing the pipe early.
