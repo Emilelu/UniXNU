@@ -1,0 +1,55 @@
+name: K60 data seed
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_repository:
+        description: Device repository as owner/name
+        required: true
+        default: Emilelu/UniXNU-mondrian
+      device_ref:
+        description: Device repository ref
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+# The seed and the kernel build never block each other.
+concurrency:
+  group: k60-data-seed
+
+jobs:
+  seed:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Check out the core repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out the device repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.device_repository }}
+          ref: ${{ inputs.device_ref }}
+          path: device
+      - name: Report the runner
+        run: |
+          sw_vers
+          python3 --version
+          df -h "$GITHUB_WORKSPACE"
+      - name: Build the Data seed
+        run: |
+          python3 device/scripts/k60-make-data-seed.py \
+            --profile profiles/os/ipados-16.6.1-20G81/profile.toml \
+            --output "$RUNNER_TEMP/k60-data-seed.dbr"
+      - name: Upload the Data seed
+        # Opt-in like the native kernel upload: the seed derives from Apple software,
+        # so it stays up for one day only and is never committed to any repository.
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: k60-data-seed-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/k60-data-seed.dbr
+            ${{ runner.temp }}/k60-data-seed.dbr.json
+          retention-days: 1
+          if-no-files-found: error
