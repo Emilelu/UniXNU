@@ -1,0 +1,96 @@
+["os"]
+"name" = "ipados-16.6.1-20G81"
+"darwin" = "22.6.0"
+"xnu_version" = "8796.141.3"
+"xnu_revision" = "1b191cb58250d0705d8a51287127505aa4bc0789"
+"driverkit_tag" = "xnu-8796.101.5"
+"trustcache_tag" = "xnu-8796.101.5"
+"abi" = ["IOGPUFamily", "IOHIDFamily", "IOMobileGraphicsFamily"]
+
+
+["ipsw"]
+"url" = "https://updates.cdn-apple.com/2023SummerFCS/fullrestores/042-44385/366890C4-D9B5-4938-B399-C19FB58DBEE0/iPad_Pro_HFR_16.6.1_20G81_Restore.ipsw"
+"product" = "iPad7,1"
+"version" = "16.6.1"
+"build" = "20G81"
+"device_class" = "j120ap"
+"chip_id" = 32785
+"board_id" = 12
+"fetch" = ["KernelCache", "DeviceTree", "StaticTrustCache", "Cryptex1,SystemTrustCache"]
+
+
+["kernel"]
+
+["kernel"."prelink"]
+"tool" = "kits/XnuPrelink/emit_prelink.py"
+# The K60 kernel links with MACHINE_CONFIGS=PONG; the machine config is the 20G81 one.
+"kernel" = "build/xnu/ios-obj/DEVELOPMENT_ARM64_PONG/mach.development.pong.unstripped"
+"kernelcache_sha256" = "d260defcc2eaac258fd3a2234454dda46791dae45e97608c5416f9ba8fd366e9"
+# The K60 __DATA is 0x150000 against the 20G81 0xb0000, so the components do not fit at slide 0.
+# The device preflight installs scripts/emit_prelink_autoslide.py over the kit entry point, which
+# derives the slide from the native segment table (-0xb9c000 for the 20G81 components).
+"slide" = "0"
+"roots" = ["com.apple.AppleFSCompression.AppleFSCompressionTypeZlib", "com.apple.driver.AppleARMPlatform", "com.apple.driver.AppleARMWatchdogTimer", "com.apple.driver.AppleAudioClockLibs", "com.apple.driver.AppleEffaceableStorage", "com.apple.driver.AppleIISController", "com.apple.driver.AppleM2ScalerCSCDriver", "com.apple.driver.AppleMobileFileIntegrity", "com.apple.driver.ApplePMGR", "com.apple.driver.IODARTFamily", "com.apple.filesystems.apfs", "com.apple.iokit.CoreAnalyticsFamily", "com.apple.iokit.IOAVFamily", "com.apple.iokit.IOAudio2Family", "com.apple.iokit.IOCECFamily", "com.apple.iokit.IOCryptoAcceleratorFamily", "com.apple.iokit.IOGPUFamily", "com.apple.iokit.IOHDCPFamily", "com.apple.iokit.IOMobileGraphicsFamily", "com.apple.iokit.IOReportFamily", "com.apple.iokit.IOSlowAdaptiveClockingFamily", "com.apple.iokit.IOStorageFamily", "com.apple.iokit.IOSurface", "com.apple.kec.Libm", "com.apple.kec.corecrypto", "com.apple.kext.AppleMatch", "com.apple.kext.CoreTrust", "com.apple.security.AppleImage4", "com.apple.security.sandbox", "com.apple.iokit.IOHIDFamily", "com.apple.iokit.IOHIDEventDriver"]
+
+
+["payload"]
+# No text fixups and no trust cache yet: the K60 payload is still at the kernel-only stage.
+
+
+["adt"]
+
+["adt"."root"]
+
+["adt"."root"."string"]
+"model" = "iPad7,1"
+"target-type" = "J120"
+# The board name first: the audio server keys its routing database and MediaExperience its per-board tables on it.
+"compatible" = "J120AP"
+
+
+["adt"."chosen"]
+
+["adt"."chosen"."string"]
+"osenvironment" = "main"
+"crypto-hash-method" = "sha2-384"
+
+
+["adt"."chosen"."u32"]
+"certificate-production-status" = 0
+"effective-production-status-ap" = 0
+"certificate-security-mode" = 1
+"effective-security-mode-sep" = 1
+"amfi-only-platform-code" = 1
+
+
+["adt"."product"]
+
+["adt"."product"."string"]
+"product-name" = "iPad Pro (12.9-inch) (2nd generation)"
+"product-description" = "iPad Pro (12.9-inch) (2nd generation)"
+"artwork-device-idiom" = "pad"
+"artwork-display-gamut" = "P3"
+"compatible-device-fallback" = "iPad6,7"
+
+
+["adt"."product"."u32"]
+"artwork-device-subtype" = 2732
+"artwork-scale-factor" = 2
+
+# MGGetProductType() looks this 20-byte id up in libMobileGestalt's product table (J120: 0x80ac7ae0); without it every client that
+# switches on the product type (the audio server's routing database, among others) sees an unknown device.
+["adt"."product"."bytes"]
+"product-id" = "e9fefef6e6f9d12a5ba1a2551866cbbd749f0ec3"
+
+
+# The audio server reads IODeviceTree:/product/audio. The original node also sets supports-always-listening, left out here.
+["adt"."product"."audio"]
+
+["adt"."product"."audio"."u32"]
+"wireless-splitter" = 1
+
+
+["adt"."defaults"]
+
+["adt"."defaults"."u32"]
+"kern.maxvnodes" = 66560
