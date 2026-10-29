@@ -510,3 +510,12 @@ runtime_identifiers = ["ShengPreflight"]
 build_stage = "firmware"
 build = []
 outputs = []
+[[component]]
+id = "PongUfs"
+kind = "driver"
+function = "SM8475/pong UFS transport and SHNGROOT root for the Redmi K60"
+scope = "board"
+path = "drivers/NativeUfs"
+source_files = ["NativeUfs.cpp"]
+build = ["build-arm-driver.py", "PongUfs"]
+outputs = ["build/sheng-ufs/libShengUfs.a"]
