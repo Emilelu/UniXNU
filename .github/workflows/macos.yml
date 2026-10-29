@@ -261,6 +261,20 @@ jobs:
           if [ "$SKIP_SETUP" = true ]; then args+=(--skip-setup); fi
           ./unixnu build payload "${args[@]}"
 
+      - name: Upload the payload
+        # The payload FAT carries the native kernel, its ADT and unixnu.toml; it is
+        # the image that `fastboot boot` runs and the only way to inspect the boot
+        # arguments the prelink produced.
+        if: always() && contains(inputs.steps, 'payload')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unixnu-${{ steps.check.outputs.board }}-payload-${{ github.run_attempt }}
+          path: |
+            ${{ steps.check.outputs.work }}/payload/payload.img
+            ${{ steps.check.outputs.work }}/payload/payload.json
+          if-no-files-found: warn
+          retention-days: 1
+
       - name: Collect the text logs
         id: logs
         if: always() && steps.check.outcome == 'success'
