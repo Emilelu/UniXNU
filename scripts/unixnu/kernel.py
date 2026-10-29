@@ -192,6 +192,56 @@ def build(ctx, modules):
     run(['bash', script], cwd=ctx.tree, env=env, log_file=ctx.logs / 'kernel.log')
 
 
+def patch_prelinked_kext(ctx, output, specs):
+    """Write board-qualified byte patches into kexts copied from the original kernelcache.
+
+    A prelinked Apple driver can be wrong for the board while the rest of its kernelcache
+    is required (AMFI pulls ApplePMGR, ApplePMGR pulls AppleARMPlatform). No source patch
+    can reach those bytes, so the board names the component, the offset from its
+    __TEXT_EXEC base, the bytes expected there and the bytes to write. The expected bytes
+    are the guard: a different kernelcache fails the build instead of patching whatever
+    happens to sit at that offset.
+    """
+    import sys
+    sys.path.insert(0, str(ctx.tree / 'kits/XnuPrelink'))
+    import native_prelink
+    data = bytearray(output.read_bytes())
+    parent = native_prelink.macho(data)
+    info = next((s for s in parent['segments'] if s['name'] == '__PRELINK_INFO'), None)
+    if info is None:
+        raise Error(f'{output} has no __PRELINK_INFO')
+    at = native_prelink.backed_offset(parent['segments'], info['va'], info['filesize'], len(data))
+    entries = {entry['CFBundleIdentifier']: entry for entry in
+               native_prelink.unserialize_xml(data[at:at + info['filesize']])['_PrelinkInfoDictionary']}
+    written = []
+    for spec in specs:
+        identifier = spec.get('kext')
+        if not identifier or 'rva' not in spec or 'expect' not in spec or 'replace' not in spec:
+            raise Error(f'kext patch needs kext, rva, expect and replace: {spec}')
+        entry = entries.get(identifier)
+        if entry is None:
+            raise Error(f'kext patch names a component this kernel does not prelink: {identifier}')
+        header = native_prelink.backed_offset(parent['segments'], entry['_PrelinkExecutableLoadAddr'], 32, len(data))
+        module = native_prelink.macho(data, header)
+        text = next((s for s in module['segments'] if s['name'] == '__TEXT_EXEC'), None)
+        if text is None:
+            raise Error(f'{identifier} has no __TEXT_EXEC segment')
+        expect = bytes.fromhex(spec['expect'])
+        replace = bytes.fromhex(spec['replace'])
+        if not expect or len(expect) != len(replace):
+            raise Error(f'{identifier}: expect and replace must be equal-length nonempty hex')
+        address = text['va'] + int(str(spec['rva']), 0)
+        offset = native_prelink.backed_offset(parent['segments'], address, len(expect), len(data))
+        found = bytes(data[offset:offset + len(expect)])
+        if found != expect:
+            raise Error(f'{identifier}: bytes at {address:#x} are {found.hex()}, expected {expect.hex()}')
+        data[offset:offset + len(replace)] = replace
+        written.append({'kext': identifier, 'rva': str(spec['rva']), 'address': address,
+                        'expect': expect.hex(), 'replace': replace.hex()})
+    output.write_bytes(data)
+    return written
+
+
 def prelink(ctx):
     """Produce out/<device>/kernel/kernel.macho from the XNU build and the original kernelcache."""
     log('kernel: prelink')
@@ -223,5 +273,16 @@ def prelink(ctx):
         command += ['--early-security-init', spec['early_security_init']]
     command += spec.get('extra_args', [])
     run(command, cwd=ctx.tree, log_file=ctx.logs / 'prelink.log')
+    kext_patches = spec.get('kext_patches') or spec.get('kext_patch')
+    if kext_patches:
+        written = patch_prelinked_kext(ctx, output, kext_patches)
+        for item in written:
+            log(f'kernel: patched {item["kext"]} +{item["rva"]} ({item["expect"]} -> {item["replace"]})')
+        record = output.with_suffix('.json')
+        if record.is_file():
+            import json
+            document = json.loads(record.read_text())
+            document['kext_patches'] = written
+            record.write_text(json.dumps(document, indent=2) + '\n')
     log(f'kernel: {output} sha256 {sha256_file(output)}')
     return output
