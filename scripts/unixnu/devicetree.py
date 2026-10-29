@@ -339,10 +339,21 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
     cpus = next((entry for entry in root.children if entry.name == 'cpus'), None)
     if cpus is None:
         raise Error('Hardware DTS requires /cpus')
+    # Bring-up parity with the pong ADT: AppleARMCPU's multi-CPU validation
+    # needs per-CPU interrupts[3] (interrupts[2] == interrupts[0] + 1), reg-private
+    # and the cache descriptors. A single-CPU ADT skips those checks, so allow the
+    # board to cap the count with [payload] cpus.
+    limit = config.get('payload', {}).get('cpus')
+    if limit is not None:
+        limit = int(limit)
+        if not 1 <= limit <= 8:
+            raise Error('payload.cpus must be within 1..8')
     cpu_nodes = []
     for entry in cpus.children:
         if not entry.enabled():
             continue
+        if limit is not None and len(cpu_nodes) >= limit:
+            break
         values = registers(entry)
         if len(values) != 1 or values[0][0] > 0xffffffff:
             raise Error(f'{entry.name}: CPU affinity must fit a u32')
