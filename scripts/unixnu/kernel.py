@@ -121,6 +121,9 @@ def build_archives(ctx, env):
     if not ctx.need_config().get('XNU_BUILD_ARCHIVES'):
         return
     env = dict(env, PATH=toolchain_path(env.get('PATH')))
+    records = ctx.board.get('kernel', {}).get('driver_records')
+    if records:
+        env['UNIXNU_DRIVER_RECORD'] = f'build/xnu/ios-obj/{records}/iokit/DEVELOPMENT/IOPlatformExpert.cpo.json'
     for index, (kind, entry) in enumerate(archive_plan(ctx), 1):
         if kind == 'component':
             spec = entry
