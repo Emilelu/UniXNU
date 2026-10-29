@@ -83,7 +83,7 @@ jobs:
   build:
     # Pinned: macos-latest moves between images (macos-15 had an Xcode whose clang rejects the warning options the
     # build passes with -Werror). macos-26 is arm64 and carries the Xcode 26 line the build is developed with.
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 360
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ inputs.xcode }}.app/Contents/Developer
