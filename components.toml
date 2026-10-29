@@ -512,10 +512,12 @@ build = []
 outputs = []
 [[component]]
 id = "PongUfs"
+repository = "https://github.com/Emilelu/PongUfs.git"
+revision = "c959284f63534eb56f0a4e863fd3a65127ad7a40"
 kind = "driver"
 function = "SM8475/pong UFS transport and SHNGROOT root for the Redmi K60"
 scope = "board"
-path = "drivers/NativeUfs"
+build_stage = "kernel"
 source_files = ["NativeUfs.cpp"]
 build = ["build-arm-driver.py", "PongUfs"]
 outputs = ["build/sheng-ufs/libShengUfs.a"]
