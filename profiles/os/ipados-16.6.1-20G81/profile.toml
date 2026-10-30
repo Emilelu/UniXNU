@@ -105,3 +105,7 @@
 
 ["adt"."defaults"."u32"]
 "kern.maxvnodes" = 66560
+# keybagd and apfs.kext both read IODeviceTree:/defaults. Without this the
+# keybag is expected to be wrapped by the effaceable key, and this board has
+# no IOEffaceableDevice at all, so every keybag save returns unsupported.
+"no-effaceable-storage" = 1
