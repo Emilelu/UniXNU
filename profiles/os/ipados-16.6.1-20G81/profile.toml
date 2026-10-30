@@ -62,6 +62,7 @@
 "effective-security-mode-sep" = 1
 "amfi-only-platform-code" = 1
 "security-mode-change-enable" = 1
+"debug-enabled" = 1
 
 
 ["adt"."product"]
