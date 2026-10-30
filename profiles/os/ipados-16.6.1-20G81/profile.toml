@@ -55,6 +55,15 @@
 "crypto-hash-method" = "sha2-384"
 
 
+# Launchd's early /sbin/mount task calls IOGetBootManifestHash(), which only
+# copies /chosen/boot-manifest-hash (48 bytes, matching crypto-hash-method
+# sha2-384); it does not verify the value. The restore image ships no manifest
+# for this board, so publish a fixed owner digest instead of leaving the task to
+# exit 66 (EX_NOINPUT) and take the critical-exit panic.
+["adt"."chosen"."bytes"]
+"boot-manifest-hash" = "6b36302d6f776e65722d626f6f742d6d616e69666573742d763100000000000000000000000000000000000000000000"
+
+
 ["adt"."chosen"."u32"]
 "certificate-production-status" = 0
 "effective-production-status-ap" = 0
