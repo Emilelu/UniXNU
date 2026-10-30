@@ -3,6 +3,10 @@ name: K60 data seed
 on:
   workflow_dispatch:
     inputs:
+      seed_size:
+        description: 'hdiutil -size for the APFS Data container (32m stalls a read-write mount)'
+        required: false
+        default: '32m'
       device_repository:
         description: Device repository as owner/name
         required: true
@@ -41,6 +45,7 @@ jobs:
         run: |
           python3 device/scripts/k60-make-data-seed.py \
             --profile profiles/os/ipados-16.6.1-20G81/profile.toml \
+            --size "${{ inputs.seed_size }}" \
             --output "$RUNNER_TEMP/k60-data-seed.dbr"
       - name: Upload the Data seed
         # Opt-in like the native kernel upload: the seed derives from Apple software,
