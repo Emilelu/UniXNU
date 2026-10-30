@@ -72,6 +72,11 @@
 "amfi-only-platform-code" = 1
 "security-mode-change-enable" = 1
 "debug-enabled" = 1
+# MobileGestalt/FrontBoard read this as the FBSDisplayMode preferredScale.
+# Missing it means scale 0: infinite logical dimensions, and SpringBoard
+# traps in the mode validity check before creating its main display.
+# The panel is 1440x3200, so 3 gives 480x1066.67 points.
+"display-scale" = 3
 
 
 ["adt"."product"]
