@@ -1,0 +1,3 @@
+#!/bin/sh
+# Apple c++filt strips the Mach-O leading underscore before demangling (GNU needs -_).
+exec /usr/bin/c++filt -_ "$@"
