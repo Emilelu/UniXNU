@@ -127,6 +127,29 @@ def build(ctx, kernel=None):
     payloads = stage / 'EFI/UniXNU/Payloads'
     payloads.mkdir(parents=True)
     shutil.copyfile(kernel, payloads / 'kernel.macho')
+    # The K60 kernel prelinks Apple's 20G81 kernelcache, so AppleARMPlatform's
+    # AppleARMCPU class ships inside it and its _validateConfiguration() only
+    # accepts an Apple Silicon device tree: it panics with "CPU configuration in
+    # device tree is invalid" (@AppleARMCPU.cpp:111) before our ArmCpu can take
+    # the /cpus nubs. The patch makes that validator return true. It has to run
+    # on every payload because each build regenerates kernel.macho; leaving it to
+    # a manual checklist is how two boots were wasted on 2026-11-01.
+    armcpu_patch_tool = ctx.tree / 'scripts/patch-armcpu-validate.py'
+    if armcpu_patch_tool.is_file():
+        run(['python3', str(armcpu_patch_tool), str(payloads / 'kernel.macho'), '--apply'], cwd=ctx.tree,
+            log_file=ctx.logs / 'payload-armcpu-validate.log')
+        log('payload: AppleARMCPU _validateConfiguration skipped')
+    # The real com.apple.security.sandbox policy is the only writer of
+    # mpo_cred_label_update_execve in this image, and its refusal is what turns
+    # launchd's execve into SIGKILL with OS_REASON_EXEC/EXEC_EXIT_REASON_SECURITY_POLICY
+    # ("unexpected SIGKILL of launchd ... namespace 9 code 0x8"). Forcing that hook to
+    # return 0 leaves label_update_return at 0 for every exec, so the kill cannot come
+    # from the MAC path - independent of who wins the policy name "Sandbox".
+    sandbox_patch_tool = ctx.tree / 'scripts/patch-sandbox-label-update.py'
+    if sandbox_patch_tool.is_file():
+        run(['python3', str(sandbox_patch_tool), str(payloads / 'kernel.macho'), '--apply'], cwd=ctx.tree,
+            log_file=ctx.logs / 'payload-sandbox-label.log')
+        log('payload: sandbox mpo_cred_label_update_execve forced to 0')
     # The entry probe (stage bars, optional reset) is wanted with either setting; the panic screen is only one part of it.
     if spec.get('panic_screen') or spec.get('entry_probe_reset_delay'):
         probe = (['--reset-delay', str(int(spec['entry_probe_reset_delay']))]
