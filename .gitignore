@@ -58,4 +58,10 @@ unixnu.local.toml
 /pong-adreno-linux/
 /pong-adreno-stage4-test/
 /pong-driver/kits
-/pong-driver/
+# pong-driver carries build scripts (scripts/, shim-bin/) that unixnu build
+# kernel requires; only its build artifacts are ignored (2026-11-03 fix).
+/pong-driver/**/*.a
+/pong-driver/**/*.o
+/pong-driver/**/*.log
+/pong-driver/**/build/
+/pong-driver/**/build-report.json
