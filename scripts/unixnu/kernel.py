@@ -65,8 +65,8 @@ def linux_env(ctx):
     """
     toolchain = Path(os.environ.get('UNIXNU_TOOLCHAIN', '/opt/unixnu-linux'))
     clt, xctoolchain = toolchain / 'CommandLineTools/usr', toolchain / 'XcodeDefault.xctoolchain/usr'
-    for path in (toolchain / 'llvm/bin/clang', clt / 'bin/ld', clt / 'bin/xnu-host-cc', clt / 'libexec/migcom',
-                 xctoolchain / 'bin/iig', Path('/usr/bin/xcrun'), toolchain / 'bin/lzfse'):
+    for path in (toolchain / 'llvm/bin/clang', clt / 'bin/ld', clt / 'bin/xnu-host-cc', clt / 'bin/mig',
+                 clt / 'libexec/migcom', xctoolchain / 'bin/iig', Path('/usr/bin/xcrun'), toolchain / 'bin/lzfse'):
         if not path.exists():
             raise Error(f'{path} missing; run "sudo scripts/linux/setup-toolchain.py {toolchain}"')
     fakeroot = ctx.tree / '.cache/fakeroot'
@@ -77,7 +77,18 @@ def linux_env(ctx):
             'UNIXNU_PLATFORM_PATH': str(fakeroot / 'Platforms/iPhoneOS.platform'),
             'CROSS_CLANG': str(toolchain / 'llvm/bin/clang'), 'DARWIN_TRIPLE': 'arm64-apple-ios17.0',
             'CROSS_EXTRA_FLAGS': '-mllvm -disable-atexit-based-global-dtor-lowering',
-            'CCC_OVERRIDE_OPTIONS': '# +-Wno-missing-designated-field-initializers +-Wno-unused-but-set-global'}
+            'CCC_OVERRIDE_OPTIONS': '# +-Wno-missing-designated-field-initializers +-Wno-unused-but-set-global',
+            # Host tools of the SETUP phase must be built for the Linux host. MakeInc.cmd only sets HOST_CC
+            # when it is undefined, falling back to `xcrun -find clang`, which is the Darwin cross compiler;
+            # that one has no Linux libc headers and fails with 'stdio.h file not found'.
+            'HOST_CC': str(clt / 'bin/xnu-host-cc'),
+            # mig(1) is a wrapper: C=${MIGCC} preprocesses the .defs, M=${MIGCOM} generates. MakeInc.cmd
+            # defaults MIGCOM to `xcrun -find migcom`, and the shim only searches usr/bin, while migcom
+            # lives in usr/libexec, so MIGCOM ends up empty and the pipeline `"$C" ... | "$M"` reports
+            # 'mig: line 183: : command not found'. MIGCC/MIG are pinned for the same reason.
+            'MIG': str(clt / 'bin/mig'),
+            'MIGCOM': str(clt / 'libexec/migcom'),
+            'MIGCC': str(clt / 'bin/clang')}
 
 
 def archive_plan(ctx):
@@ -170,6 +181,15 @@ def build(ctx, modules):
         generated.mkdir(parents=True, exist_ok=True)
         env['UNIXNU_GENERATED_DIR'] = str(generated)
     env['JOBS'] = str(ctx.jobs)
+    # build-xnu-4k-baseline.sh resolves its platform driver sources with
+    # PONG_DRIVER_SOURCE=${PONG_NATIVE_DRIVER_SOURCE:-$ROOT}. Without this the
+    # Adreno/UI provider steps read $ROOT/drivers/PongAdreno, which the assembled
+    # tree does not carry (it only links the selected components), and the build
+    # stops on PongAdrenoCpProfile.h. Point it at the driver checkout the device
+    # archive recipes use, which board.toml already names for the format-2 path.
+    if ctx.board.get('kernel', {}).get('pong_native_driver_source'):
+        env['PONG_NATIVE_DRIVER_SOURCE'] = ctx.board['kernel']['pong_native_driver_source'].format(
+            tree=str(ctx.tree), out=str(ctx.work))
     record = ctx.tree / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/osfmk/DEVELOPMENT/startup.o.json'
     if not record.is_file():
         # The archive builders and the boot progress layer read compile records of the XNU build, which only an earlier
