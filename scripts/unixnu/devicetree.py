@@ -203,8 +203,8 @@ def arm_io_window(hardware):
 
 
 STRINGS = {'compatible', 'device_type', 'reg-names', 'interrupt-names', 'clock-names', 'method'}
-U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency'}
-U64 = {'redistributor-stride'}
+U32 = {'phandle', 'linux,phandle', '#interrupt-cells', '#iommu-cells', '#clock-cells', 'clock-frequency', 'timebase-frequency', 'pong,smmu-stream-id', 'pong,ufs-spi', 'pong,smmu-context-banks', 'pong,smmu-match-groups'}
+U64 = {'redistributor-stride', 'pong,ufs-hc-base', 'pong,ufs-hc-size', 'pong,gcc-ufs-page', 'pong,smmu-base', 'pong,smmu-size'}
 FLAGS = {'interrupt-controller', 'dma-coherent'}
 REFERENCES = {'interrupt-parent': None, 'iommus': '#iommu-cells', 'clocks': '#clock-cells'}
 
@@ -339,16 +339,30 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
     cpus = next((entry for entry in root.children if entry.name == 'cpus'), None)
     if cpus is None:
         raise Error('Hardware DTS requires /cpus')
+    # Bring-up parity with the pong ADT: AppleARMCPU's multi-CPU validation
+    # needs per-CPU interrupts[3] (interrupts[2] == interrupts[0] + 1), reg-private
+    # and the cache descriptors. A single-CPU ADT skips those checks, so allow the
+    # board to cap the count with [payload] cpus.
+    limit = config.get('payload', {}).get('cpus')
+    if limit is not None:
+        limit = int(limit)
+        if not 1 <= limit <= 8:
+            raise Error('payload.cpus must be within 1..8')
     cpu_nodes = []
     for entry in cpus.children:
         if not entry.enabled():
             continue
+        if limit is not None and len(cpu_nodes) >= limit:
+            break
         values = registers(entry)
         if len(values) != 1 or values[0][0] > 0xffffffff:
             raise Error(f'{entry.name}: CPU affinity must fit a u32')
         properties = [('reg', struct.pack('<I', values[0][0])),
                       ('state', b'running\0' if not cpu_nodes else b'waiting\0'), ('device_type', b'cpu\0'),
                       ('compatible', entry.properties['compatible']),
+                      # AppleARMCPU::_validateConfiguration refuses a CPU without cpu-id, and
+                      # /cpus without max_cpus ("Max CPU count is zero").
+                      ('cpu-id', struct.pack('<I', len(cpu_nodes))),
                       ('timebase-frequency', struct.pack('<I', cpus.scalar('timebase-frequency')))]
         if 'unixnu,cluster-type' in entry.properties:
             # XNU reads the cluster type as an integer character: 'E' or 'P'.
@@ -359,7 +373,8 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
         cpu_nodes.append(node(f'cpu{len(cpu_nodes)}', properties))
     if not cpu_nodes:
         raise Error('Hardware DTS requires an enabled boot CPU')
-    children.append(node('cpus', children=cpu_nodes))
+    children.append(node('cpus', [('max_cpus', struct.pack('<I', len(cpu_nodes)))],
+                          children=cpu_nodes))
     psci = next((entry for entry in root.children if entry.name == 'psci'), None)
     if len(cpu_nodes) > 1:
         if psci is None or psci.strings('method') not in (['smc'], ['hvc']):

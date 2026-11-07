@@ -1,0 +1,4 @@
+# XNU patches that belong to the 20G81 OS layer.
+# Empty for now: the K60 series still carries every patch in the device repository
+# (patches/xnu/series). Move the version-specific ones here once they are shared by
+# a second 20G81 device.

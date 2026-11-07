@@ -16,7 +16,6 @@ dependencies = []
 source_files = ["ArmCpu.cpp"]
 runtime_identifiers = ["ArmCpu.cpp", "org.blu-sharky.ArmCpu", "ArmCpu"]
 build_stage = "kernel"
-build = ["build-arm-driver.py", "ArmCpu"]
 outputs = ["build/armcpu/libArmCpu.a"]
 
 [[component]]
@@ -35,7 +34,6 @@ dependencies = []
 source_files = ["ArmDTPlatform.cpp"]
 runtime_identifiers = ["ArmDTPlatform.cpp", "org.blu-sharky.ArmDTPlatform", "ArmDTPlatform"]
 build_stage = "kernel"
-build = ["build-arm-driver.py", "ArmDTPlatform"]
 outputs = ["build/armdt-platform/libArmDTPlatform.a"]
 
 [[component]]
@@ -510,3 +508,13 @@ runtime_identifiers = ["ShengPreflight"]
 build_stage = "firmware"
 build = []
 outputs = []
+[[component]]
+id = "PongUfs"
+repository = "https://github.com/Emilelu/PongUfs.git"
+revision = "c959284f63534eb56f0a4e863fd3a65127ad7a40"
+kind = "driver"
+function = "SM8475/pong UFS transport and SHNGROOT root for the Redmi K60"
+scope = "board"
+build_stage = "kernel"
+source_files = ["NativeUfs.cpp"]
+outputs = ["build/sheng-ufs/libShengUfs.a"]
