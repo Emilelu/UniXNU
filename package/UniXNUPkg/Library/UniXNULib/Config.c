@@ -35,7 +35,14 @@
 STATIC CONST CHAR8  mBuiltinConfig[] =
   "version = 1\n"
   "[boot]\n"
-  "timeout = 10\n"
+  //
+  // -1 keeps the menu up until somebody presses a key (the fallback timer
+  // still runs when no input device exists).  A countdown here silently
+  // boots the first entry - "Return to firmware" - and drops the machine
+  // back into Android while the operator is looking away.
+  //
+  "timeout = -1\n"
+  "fallback_timeout = 300\n"
   "rotate = 2\n"
   "[ui]\n"
   "title = \"UniXNU\"\n"
@@ -1553,11 +1560,22 @@ UniXNUConfigLoad (
 
   if (!Loaded && (Config->Error[0] == '\0')) {
     Status = gBS->LocateHandleBuffer (ByProtocol, &gEfiSimpleFileSystemProtocolGuid, NULL, &Count, &Handles);
-    if (!EFI_ERROR (Status)) {
-      for (Index = 0; Index < Count && !Loaded && Config->Error[0] == '\0'; Index++) {
-        Loaded = TryVolume (Config, Handles[Index]);
-      }
+    if (EFI_ERROR (Status)) {
+      Count = 0;
+    }
 
+    //
+    // Without this a missing volume and a missing file look identical in the
+    // log; on a platform where a DXE driver publishes the payload as a block
+    // device that distinction is the whole diagnosis.
+    //
+    UniXNULog ("config: %u file system volume(s)", (UINT32)Count);
+    for (Index = 0; Index < Count && !Loaded && Config->Error[0] == '\0'; Index++) {
+      UniXNULog ("config: probing volume %u", (UINT32)(Index + 1));
+      Loaded = TryVolume (Config, Handles[Index]);
+    }
+
+    if (Count != 0) {
       FreePool (Handles);
     }
   }

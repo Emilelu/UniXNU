@@ -11,6 +11,7 @@
 
 [Packages]
   MdePkg/MdePkg.dec
+  SiliciumPkg/SiliciumPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -19,11 +20,14 @@
   FdtLib
   HobLib
   UefiBootServicesTableLib
+  MemoryMapHelperLib
   UefiDriverEntryPoint
 
 [Protocols]
   gEfiBlockIoProtocolGuid                       ## PRODUCES
   gEfiDevicePathProtocolGuid                    ## PRODUCES
+  gEfiDiskIoProtocolGuid                        ## CONSUMES
+  gEfiSimpleFileSystemProtocolGuid              ## CONSUMES
 
 [Depex]
   TRUE
