@@ -15,6 +15,16 @@
     "title_zh": "Redmi K40（alioth）"
   },
   {
+    "name": "alioth-fjcx555",
+    "title": "Xiaomi Redmi K40 (alioth, M2012K11AC) (fjcx555)",
+    "title_zh": "Xiaomi Redmi K40 (alioth, M2012K11AC) (fjcx555)"
+  },
+  {
+    "name": "alioth-songchiyu",
+    "title": "Xiaomi Redmi K40 (alioth, M2012K11AC) (songchiyu)",
+    "title_zh": "Xiaomi Redmi K40 (alioth, M2012K11AC) (songchiyu)"
+  },
+  {
     "name": "alioth-yang232138",
     "title": "Xiaomi Redmi K40 (alioth, M2012K11AC) (yang232138)",
     "title_zh": "Xiaomi Redmi K40 (alioth, M2012K11AC) (yang232138)"
@@ -33,6 +43,11 @@
     "name": "asteroids",
     "title": "Nothing Phone (3a) (asteroids)",
     "title_zh": "Nothing Phone (3a)（asteroids）"
+  },
+  {
+    "name": "bbk-a2",
+    "title": "BBK/EEBBK A2, X2 and X2P tablet (ums512_1h190, Unisoc T610 / UMS512 SharkL5Pro)",
+    "title_zh": "BBK/EEBBK A2, X2 and X2P tablet (ums512_1h190, Unisoc T610 / UMS512 SharkL5Pro)"
   },
   {
     "name": "braveark",
@@ -95,6 +110,11 @@
     "title_zh": "小米平板 4 LTE（clover）"
   },
   {
+    "name": "d2xq",
+    "title": "Samsung Galaxy Note10+ 5G (SM-N9760)",
+    "title_zh": "Samsung Galaxy Note10+ 5G (SM-N9760)"
+  },
+  {
     "name": "dada",
     "title": "Xiaomi 15 (dada)",
     "title_zh": "小米 15（dada）"
@@ -113,6 +133,11 @@
     "name": "dipper",
     "title": "Xiaomi Mi 8 (dipper)",
     "title_zh": "小米 8（dipper）"
+  },
+  {
+    "name": "dizi",
+    "title": "Xiaomi Redmi Pad Pro (dizi); ruan unverified",
+    "title_zh": "Xiaomi Redmi Pad Pro (dizi); ruan unverified"
   },
   {
     "name": "droidvm",
@@ -195,6 +220,11 @@
     "title_zh": "Xiaomi 13 (hanzi123-bilp)"
   },
   {
+    "name": "fuxi-kerfand",
+    "title": "Xiaomi 13 (Kerfand)",
+    "title_zh": "Xiaomi 13 (Kerfand)"
+  },
+  {
     "name": "fuxi-ljhhkx529",
     "title": "Xiaomi 13 (ljhhkx529)",
     "title_zh": "Xiaomi 13 (ljhhkx529)"
@@ -275,6 +305,11 @@
     "title_zh": "小米 14（houji）"
   },
   {
+    "name": "houji-kizashi3",
+    "title": "Xiaomi 14 houji SM8650 (Kizashi3)",
+    "title_zh": "Xiaomi 14 houji SM8650 (Kizashi3)"
+  },
+  {
     "name": "hummer",
     "title": "OnePlus Ace 5 Pro (hummer)",
     "title_zh": "一加 Ace 5 Pro（hummer）"
@@ -283,6 +318,11 @@
     "name": "instantnoodlep",
     "title": "OnePlus 8 Pro (instantnoodlep)",
     "title_zh": "一加 8 Pro（instantnoodlep）"
+  },
+  {
+    "name": "instantnoodlep-zhangp996",
+    "title": "OnePlus 8 Pro IN2020, 8 GiB, 1080x2376, UFS root (zhangp996)",
+    "title_zh": "OnePlus 8 Pro IN2020, 8 GiB, 1080x2376, UFS root (zhangp996)"
   },
   {
     "name": "ishtar",
@@ -298,6 +338,11 @@
     "name": "j716f",
     "title": "Lenovo Xiaoxin Pad Pro 2021 (j716f)",
     "title_zh": "联想小新 Pad Pro 2021（j716f）"
+  },
+  {
+    "name": "j716f-emptyghost",
+    "title": "Lenovo Xiaoxin Pad Pro 2021 TB-J716F UniXNU bring-up (EmptyGhost)",
+    "title_zh": "Lenovo Xiaoxin Pad Pro 2021 TB-J716F UniXNU bring-up (EmptyGhost)"
   },
   {
     "name": "kebab",
@@ -338,6 +383,11 @@
     "name": "lumia950",
     "title": "Microsoft Lumia 950",
     "title_zh": "Microsoft Lumia 950"
+  },
+  {
+    "name": "lumia950-twisstedtoast",
+    "title": "Microsoft Lumia 950 — P1 build research (TwisstedToast)",
+    "title_zh": "Microsoft Lumia 950 — P1 build research (TwisstedToast)"
   },
   {
     "name": "luming",
@@ -605,9 +655,19 @@
     "title_zh": "小米 8 SE（sirius）"
   },
   {
+    "name": "sirius-yooglery",
+    "title": "Xiaomi Mi 8 SE (Yooglery)",
+    "title_zh": "Xiaomi Mi 8 SE (Yooglery)"
+  },
+  {
     "name": "sm-t733",
     "title": "Samsung Galaxy Tab S7 FE Wi-Fi (SM-T733)",
     "title_zh": "三星 Galaxy Tab S7 FE Wi-Fi（SM-T733）"
+  },
+  {
+    "name": "songyuan",
+    "title": "REDMI K100 Pro Max (songyuan, SM8850 Canoe)",
+    "title_zh": "REDMI K100 Pro Max (songyuan, SM8850 Canoe)"
   },
   {
     "name": "sweet",
@@ -660,9 +720,19 @@
     "title_zh": "小米 10（umi）"
   },
   {
+    "name": "umi-agxmx666",
+    "title": "Xiaomi Mi 10 / SM8250 UniXNU bring-up (AGXMX666)",
+    "title_zh": "Xiaomi Mi 10 / SM8250 UniXNU bring-up (AGXMX666)"
+  },
+  {
     "name": "umi-mouya-q",
     "title": "Xiaomi Mi 10 / SM8250 UniXNU bring-up (mouya-q)",
     "title_zh": "Xiaomi Mi 10 / SM8250 UniXNU bring-up (mouya-q)"
+  },
+  {
+    "name": "umi-neowiseq",
+    "title": "Xiaomi Mi 10 / SM8250 UniXNU bring-up (neowiseq)",
+    "title_zh": "Xiaomi Mi 10 / SM8250 UniXNU bring-up (neowiseq)"
   },
   {
     "name": "unisoc",

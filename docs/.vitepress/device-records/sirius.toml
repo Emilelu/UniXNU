@@ -37,6 +37,8 @@ procedure = [
   "Compile the hardware tree through the payload step (prototype: dtc -I dts -O dtb -i <soc>/dts dts/sirius.dts).",
 ]
 findings = [
+  "board.toml gained build-sirius-emmc.py in the archive list next to the USB console entry.",
+  "board.toml lists build-sirius-emmc.py alongside the other archives, because the SDCC1 probe is compiled the same way as the USB console and joins the same force-loaded archive.",
   "Format 2 replaced the hand-written ADT generator of the legacy port (scripts/make-sirius-adt.py) with a board DTS: the payload step compiles the tree and derives kernel.macho.adt from it.",
   "The arm-io base is derived from the exported nodes, not written by hand: the GIC at 0x17a00000 makes the window start at 0x17000000, which XNU reads as the SoC base.",
   "The legacy port set ipad_identity = true; in format 2 the same identity is the OS profile's [adt] tables, so the board only states its deviations.",
@@ -61,7 +63,7 @@ evidence = [
 id = "firmware"
 status = "implemented"
 components = ["DarwinBoot"]
-paths = ["scripts/make-uboot-payload.py", "drivers/DarwinBoot/**", "board.toml"]
+paths = ["scripts/make-uboot-payload.py", "drivers/DarwinBoot/**"]
 inputs = [
   "The device runs sirius-distro (mainline Linux) and its boot partition carries U-Boot 2026.07 with EFI_LOADER, the UEFI boot manager, GOP through vidconsole and EFI block volumes over FAT.",
   "UniXNU.efi is built on the host by ./unixnu build package; DarwinBoot.efi is built from drivers/DarwinBoot.",
@@ -77,6 +79,7 @@ procedure = [
   "U-Boot boots UniXNU when /EFI/UniXNU/BOOTUNIXNU exists on the vendor partition and boots Linux otherwise.",
 ]
 findings = [
+  "The eMMC work adds no firmware component: the payload still boots through U-Boot with the same marker file.",
   "U-Boot's UEFI services are enough for UniXNU, DarwinBoot and XNU: no Mu-Silicium platform port is needed for this board.",
   "DarwinBoot's GIC-500 pre-configuration (the iBoot role) is what lets the kernel pass lockdown and start kexts on this SoC.",
   "The pre-configuration must not enable the EL1 virtual timer PPI early: on SDM710 that is INTID 19 and it fires before ArmCpu installs its handler.",
@@ -98,7 +101,7 @@ evidence = [
 id = "cpu"
 status = "implemented"
 components = ["ArmCpu"]
-paths = ["drivers/ArmCpu/**", "dts/sirius.dts", "board.toml"]
+paths = ["drivers/ArmCpu/**",  "dts/sirius.dts"]
 inputs = [
   "Eight Kryo 360 cores at Affinity1 0x000..0x700, boot CPU cpu0; cpu0-5 Cortex-A55, cpu6-7 Cortex-A75.",
   "GIC-500 distributor 0x17a00000/0x10000, redistributor 0x17a60000/0x100000, stride 0x20000.",
@@ -113,6 +116,7 @@ procedure = [
   "Build the kernel, then read the boot-progress TOPO line to confirm the topology and the probe decision.",
 ]
 findings = [
+  "The eMMC bring-up does not touch the CPU selection or the ArmCpu driver; board.toml only gained an archive entry.",
   "The boot-progress TOPO row confirms the kernel topology on hardware: boot=0 max=7 nums=01234567.",
   "With sheng-smp=1 the native ArmCpu claims every /cpus nub; without it the kernelcache AppleARMCPU takes the nubs and panics with \"CPU configuration in device tree is invalid\" because it requires /cpus/max_cpus.",
   "AppleARMCPU still wins the nubs at the current stage, which is the open IOKit blocker.",
@@ -134,7 +138,7 @@ evidence = [
 id = "memory"
 status = "implemented"
 components = []
-paths = ["dts/sirius.dts", "board.toml"]
+paths = ["dts/sirius.dts"]
 inputs = [
   "Usable DRAM 0x17d6c0000 from 0x80000000 (6 GiB model: 2 GiB then 0xfd6c0000 at 0x100000000).",
   "The framebuffer handed over by U-Boot sits at 0x9c000000 (1080x2240 splash).",
@@ -147,6 +151,7 @@ procedure = [
   "Read the MEM row of the boot-progress panel and compare it with the DTS range.",
 ]
 findings = [
+  "The eMMC probe maps two register windows (GCC and SDCC1) and reads only; the payload memory map is unchanged.",
   "The single contiguous range is what DarwinBoot's window allocation and the ADT handoff require; the two physical banks are described as one range on purpose.",
 ]
 completion = [
@@ -164,32 +169,47 @@ evidence = [
 
 [[area]]
 id = "storage"
-status = "planned"
+status = "device-verified"
 components = []
-paths = ["package/**", "docs/HANDOFF.zh-CN.md"]
+paths = ["docs/HANDOFF.zh-CN.md", "package/sirius_emmc.c", "package/NativeEmmc.cpp", "scripts/derive-storage-bindings.py"]
 inputs = [
   "The reference unit is eMMC, not UFS: the UFS transport and its sheng integration points do not apply to this board.",
-  "No native storage driver exists yet; the expected first stop of the kernel is the root device wait.",
+  "The original kernelcache is the only source of IOStorageFamily's addresses; its kext images carry no symbol table, so they are derived from the dispatch table itself.",
 ]
 configuration = [
-  "No storage component is selected in board.toml; CONFIG_XNU_NATIVE_UFS is off in the defconfig.",
+  "board.toml lists build-sirius-emmc.py (the SDCC1 probe) and build-native-emmc.py (the IOKit block driver) in [kernel] archives; CONFIG_XNU_NATIVE_UFS stays off.",
+  "[userdata] carries the 512-byte geometry and the OS/SystemOS windows read from the device's own GPT.",
 ]
 procedure = [
-  "Follow the storage guide to choose an eMMC driver path, then select it and record the checkpoint.",
+  "Build the kernel with that archive list: the driver's storage imports are bound at the prelink slide and archived with it.",
+  "Read the evidence off the boot-progress console: the probe prints the GPT rows, the driver logs the block count it publishes.",
 ]
 findings = [
-  "The legacy port deliberately kept every UFS and owner-root flag off; the boot-progress interlock of UniXNU had to be relaxed for that reason.",
+  "The data path works: ADMA2 reads return EFI PART from LBA 1, the GPT header parses (entries_lba=2, count=84, size=128) and 81 partitions with geometry are listed; boot 1179648..1310719, vendor 11010048..17301503, userdata 17301504..122142686.",
+  "Five conditions had to hold at once: the RCG2 encoding (CFG=0x2017, M=1, N=0xfc, D=0xfb), 1.8 V I/O (the board's vqmmc), the 32-bit interrupt/error map at 0x30/0x32/0x36, the ADMA descriptor address at 0x58/0x5c rather than 0x00, and cache maintenance (flush_dcache64) because the engine reads memory and not the CPU cache.",
+  "SMMU is not the blocker: the boot chain leaves it disabled (scr0=0x00230406, bit0=0) and writing S2CR hung the SoC twice, so the driver only reads SMMU state.",
+  "IOStorageFamily is a kext of the original kernelcache, so the archive form of the driver left IOBlockStorageDevice undefined at the kernel link (ld: 'a missing vtable usually means the first non-inline virtual member function has no definition').",
+  "The prelink slides every component by a constant: extents[].va = original + slide for each segment and bindings[] carries new_site = site + slide, so the addresses the driver needs are the kernelcache's plus the slide.",
+  "The dispatch table is identifiable without a live snapshot: of the 190 pinned slot names 176 are kernel exports, exactly one __DATA_CONST table matches all of them, the other 14 slots point at the kext's own BRK traps, the single constructor that stores table+16 forwards to the actual IOService constructor and the base destructor resolves to IOService's.",
+  "Eleven imports are bound (dispatch table, metaclass, protected constructor, base destructor and seven methods); when the prelinked kernel exists the derivation also checks it holds the same constructor at the slid address, so a wrong slide cannot pass.",
 ]
 completion = [
   "The eMMC registers, GPT and the OS/SystemOS windows are correct, the root volume mounts and launchd starts.",
 ]
 limits = [
-  "No storage driver and no root filesystem: the port currently stops before the root device.",
+  "Read-only: the transfer path has no write command and reportWriteProtection() says so.",
+  "IOStorageFamily parses the partition table through the driver, but the OS/SystemOS windows are not published as their own media yet, so the boot still ends at the root-device wait.",
+  "The heartbeat thread keeps ticking with the transfer count fixed at seven, so the kernel is alive and idle there rather than stuck.",
+  "CMD7 still answers r1=00000000 while reads work, because the boot chain leaves the card selected.",
 ]
 next_action = [
-  "Inventory the eMMC controller (SDCC/MSDC) registers and interrupt lines from the vendor tree before selecting an implementation.",
+  "Publish the OS and SystemOS userdata windows as their own media with the window UUID of [userdata], so the root device the OS profile asks for exists.",
 ]
-evidence = []
+evidence = [
+  { kind = "device", reference = "docs/HANDOFF.zh-CN.md", command = "fastboot flash vendor sirius-obs.img; fastboot reboot; capture-usb-console.py --duration 240", revision = "d867b1d6498dc4d0f4ae4e18060762dcae6c5847", result = "NativeEmmc starts from bsd_init, publishes 0x747BFDF blocks of 512 bytes, and IOStorageFamily reads block 0, block 1 and block 2 with 21 sectors (the 84 GPT entries) through doAsyncReadWrite; the heartbeat keeps ticking with the transfer count fixed at seven, so the boot ends at the root-device wait. Log in docs/HANDOFF.zh-CN.md." },
+  { kind = "host", reference = "docs/HANDOFF.zh-CN.md", command = "./scripts/xnu-container.sh run bash -lc './unixnu build kernel --skip-setup -D ../sirius'", revision = "a47f0d6b4615c3cdebf92102400a1bc302eb6d73", result = "The kernel links with NativeEmmc in the image (kernel.macho sha256 372820eb1b2cd9ecee15d769d1296771d0c8141c2681626d54651a62473446b8); the GitHub macOS runner builds the same archive (kernel workflow run 40386710258)." },
+  { kind = "source", reference = "package/sirius_emmc.c", result = "SDCC1 bring-up, the ADMA2 read path and the GPT parse." },
+]
 
 [[area]]
 id = "display"
@@ -208,6 +228,8 @@ procedure = [
   "Build kernel, payload and volume, boot, and read the panel: stage lines, TOPO, PROBE, MEM and panic text.",
 ]
 findings = [
+  "The panel gained an EMMC row (step, version, capabilities, state, clock, power, clock-branch halts) next to the USB row, so the storage bring-up is visible without a serial link.",
+  "The USB row (drawn by this panel) labels its six values after what they now carry - step, txev, rxev, chars, echo, poll - because they were first wired to register names and had drifted.",
   "The panel is the readable kernel log of this port: it renders the console, the TOPO/PROBE rows and panic() output.",
   "Since the panic snapshot patch the panel re-renders at panic time, so the rows are not a stale frame.",
 ]
@@ -240,6 +262,7 @@ procedure = [
   "Follow the input guide once a touch controller is known, then select an implementation.",
 ]
 findings = [
+  "The SDCC1 probe does not touch the ADT buttons, so the input row and its hold/voldown/volup mapping are unchanged.",
   "No input component is selected; the button node exists so that BSPlatform and MobileGestalt read a coherent product.",
 ]
 completion = [
@@ -341,7 +364,7 @@ evidence = []
 id = "power"
 status = "planned"
 components = []
-paths = ["dts/sirius.dts", "board.toml"]
+paths = ["dts/sirius.dts"]
 inputs = [
   "No suspend/resume path exists; the boot-progress panel is the only power-facing behaviour so far.",
 ]
@@ -353,6 +376,7 @@ procedure = [
   "Follow the power guide to add the PMIC and battery controls once the platform expert is stable.",
 ]
 findings = [
+  "The eMMC probe does not vote any RPMH resource; it re-enables the GCC SDCC1 branches that the boot chain had already set.",
   "Reset works through PSCI (the stage-3 reset loop proved it).",
 ]
 completion = [
@@ -372,7 +396,7 @@ evidence = [
 id = "packaging"
 status = "implemented"
 components = ["XnuPrelink"]
-paths = ["board.toml", "scripts/make-uboot-payload.py", "scripts/build-xnu-4k-baseline.sh", "dts/**"]
+paths = [ "scripts/make-uboot-payload.py",  "scripts/build-xnu-4k-baseline.sh",  "dts/**"]
 inputs = [
   "The payload FAT volume is the flashed artifact of this port; there is no boot.img.",
   "The prelink inputs (kernel path, roots, slide, early security initializer) come from the OS profile; the board does not override them.",
@@ -385,6 +409,7 @@ procedure = [
   "./unixnu build kernel, ./unixnu build package, then bash scripts/build-darwinboot.sh (or the CI workflow), ./unixnu build payload, and finally make-uboot-payload.py --output the volume to flash.",
 ]
 findings = [
+  "The eMMC probe ships in the same force-loaded archive as the USB console, so the package list and payload layout are unchanged.",
   "Format 2 generates kernel.macho.adt from the DTS, so the legacy ADT script is retired; make-uboot-payload.py still finishes the volume because U-Boot needs the EFI binaries inside it.",
   "scripts/build-xnu-4k-baseline.sh is a copy of the UniXNU script with one board deviation: the boot-progress interlock only requires the source crypto provider.",
   "The legacy build applied patches/xnu/*.patch by glob (56 files); format 2 applies only what the series list names, and the ARM64 and OS series assume the two files they omit are present. native-smp-secondary.patch sets MAX_CPUS 8 and Affinity1 core numbering; sheng-platform-power.patch supplies the bsd_init.c block that zzz-boot-progress.patch quotes as context (CONFIG_XNU_SHENG_PMGR is off, so its code compiles to nothing). Both now live in the sdm710 SoC series, which applies before the OS series.",
@@ -419,9 +444,9 @@ evidence = [
 id = "diagnostics"
 status = "implemented"
 components = []
-paths = ["package/**", "scripts/patch-xnu-entry-probe.py", "scripts/xnu-panic-screen.c", "docs/HANDOFF.zh-CN.md"]
+paths = ["package/**", "scripts/patch-xnu-entry-probe.py", "scripts/xnu-panic-screen.c", "scripts/capture-usb-console.py", "docs/HANDOFF.zh-CN.md", "docs/evidence/**", "patches/xnu/**", "scripts/build-sirius-emmc.py"]
 inputs = [
-  "The panel and the serial console are the two evidence channels; there is no storage for logs yet.",
+  "The panel and the serial console are the two evidence channels; since the DWC3 CDC console works, the host captures the kernel log directly and photographs are only a fallback.",
 ]
 configuration = [
   "panic_screen = true patches the entry probe and the panic screen into the payload kernel.",
@@ -431,18 +456,24 @@ procedure = [
   "Record the last checkpoint printed on the panel and in the U-Boot/XNU log for every boot, with the kernel and payload hashes of that run.",
 ]
 findings = [
+  "A register write-and-read-back test is the next diagnostic for the eMMC data phase, because SDHCI_TRANSFER_MODE reads back 0x33 after writing 0x13, which separates a write the vendor layer ignores from a command that is never sent.",
+  "The eMMC probe reports every step (controller registers, the clock tree, the response registers around CMD0/CMD1 and each failure) into the USB console ring, which is how the card clock and CMD2 findings above were obtained without a photograph.",
+  "The eMMC probe reports through sirius_usb_log_char() straight into the USB console ring, because kernel console output stops reaching the ring long before bsd_init runs.",
   "Stage bands (entry, pre-MMU, panic) and the TOPO/PROBE/MEM rows replaced the LED and UART guessing of earlier bring-up.",
   "A panic snapshot forces a panel re-render at panic time; before it, rows could show a stale frame.",
+  "The USB panel row names its fields after what they hold (step, txev, rxev, chars, echo, poll) instead of the register names they were first wired to, so a photograph can be read without the source.",
+  "The CDC console hands the console ring to the host once per attach: the pump timing that works (a short inline poll loop that breaks after the ring is drained) delivered the 3813-byte boot log on every attempt, while longer loops and a DTR-gated pump delivered nothing, so that timing is treated as load-bearing until the periodic path runs during bsd_init.",
 ]
 completion = [
   "Each claimed milestone has a reproducible command, a matching source and image revision and an accessible result.",
 ]
 limits = [
-  "No persistent log capture: the evidence lives in photographs of the panel and in the run's hashes.",
+  "The CDC console delivers the console ring as it stood when the host attached; making the whole boot stream live is the remaining work.",
 ]
 next_action = [
-  "Add the boot row and hash triple to every hardware result recorded here.",
+  "Add the boot row and hash triple to every hardware result recorded here, and attach the captured console log rather than a photograph whenever one exists.",
 ]
 evidence = [
   { kind = "source", reference = "docs/HANDOFF.zh-CN.md", result = "Entry probe, panic screen, panel rows and the evidence convention of the port." },
+  { kind = "device", reference = "docs/evidence/sirius-usb-console-20261026-1605.log", command = "sudo python3 scripts/capture-usb-console.py --wait 60 --duration 190 --output /tmp/boot.log", revision = "366abe2948fdb0c1554f7e0b89b731160f4527a4", result = "3813 bytes of kernel log read from /dev/ttyACM0 over the DWC3 CDC console." },
 ]
