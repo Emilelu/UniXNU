@@ -36,6 +36,10 @@ kernel_args = ["-v", "serial=3", "debug=0x14e"]
 
 `status` 的 `build_config` 字段显示选中的文件。`unixnu.local.toml` 保存构建输入，设备仓库的 `local.toml` 保存组件源码覆盖路径。
 
+设备通过 `[payload.runtime] appsync = true` 和匹配的内核补丁启用
+[AppSync 适配层](/zh/concepts/security#用户应用安装)，对所有用户应用包生效，
+不需要逐个应用提供构建输入。
+
 ## 配置字段
 
 | 表 | 键 | 含义 |
@@ -45,7 +49,7 @@ kernel_args = ["-v", "serial=3", "debug=0x14e"]
 | `components` | `include` | 规范组件 ID，依赖按构建顺序解析 |
 | `kernel` | `config_fragments` | 有序的配置片段 |
 | `kernel` | `patch_series` | 有序的 series 文件 |
-| `device_tree` | `source` | DTS 入口，例如 `device:dts/sheng.dts` |
+| `device_tree` | `source` | DTS 入口，例如 `device:dts/myboard.dts` |
 | `device_tree` | `include_dirs` | DTS 包含路径，例如 `soc:dts` |
 
 配置层按 ARM64、SoC、OS、设备顺序应用。表按键合并，数组替换。
@@ -140,6 +144,7 @@ kernel_args = ["-v", "serial=3", "debug=0x14e"]
 | `tags_offset` | 整数 | tags 偏移 |
 | `pagesize` | 整数 | 镜像页大小 |
 | `header_version` | 整数 | Android 启动镜像 header 版本 |
+| `kernel_compression` | 字符串 | `gzip`（默认）或 `none`，决定内核在启动镜像中的存储方式 |
 
 ### [[bootimg.dtb_node]]
 

@@ -6,7 +6,7 @@
 
 Xiaomi Mi 8 SE running the UniXNU source kernel through its own U-Boot UEFI: entry, MMU, timer, PSCI, platform expert and the boot-progress console work on hardware; IOKit is blocked on AppleARMCPU claiming /cpus.
 
-Source record: [porting.toml](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/porting.toml), `b1fa97e4d1094e31857635abc042c8cd068e677f`.
+Source record: [porting.toml](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/porting.toml), `528fac52a751bb2b4c7f24574b8c890229f73ce2`.
 
 This page is generated from the device record.
 
@@ -77,7 +77,7 @@ Components: `ArmDTPlatform`, `DarwinBoot`.
 
 ### Evidence
 
-- `source`: [Hardware values, the boot chain and the bring-up history of the legacy port, from which this configuration is carried over.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `source`: [Hardware values, the boot chain and the bring-up history of the legacy port, from which this configuration is carried over.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
 
 ## Firmware and boot {#firmware}
 
@@ -123,7 +123,7 @@ Components: `DarwinBoot`.
 
 ### Evidence
 
-- `source`: [Boot-chain diagram, the marker-file boot rule and the DarwinBoot GIC pre-configuration rationale.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `source`: [Boot-chain diagram, the marker-file boot rule and the DarwinBoot GIC pre-configuration rationale.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
 
 ## CPU and interrupts {#cpu}
 
@@ -168,7 +168,7 @@ Components: `ArmCpu`.
 
 ### Evidence
 
-- `source`: [Timer INTID measurement, the TOPO checkpoint and the AppleARMCPU panic analysis.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `source`: [Timer INTID measurement, the TOPO checkpoint and the AppleARMCPU panic analysis.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
 
 ## Memory and DMA {#memory}
 
@@ -207,7 +207,7 @@ Components: `ArmCpu`.
 
 ### Evidence
 
-- `source`: [DRAM split, framebuffer address and the memory-map checkpoint.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `source`: [DRAM split, framebuffer address and the memory-map checkpoint.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
 
 ## Storage and root {#storage}
 
@@ -255,11 +255,11 @@ Components: `ArmCpu`.
 
 ### Evidence
 
-- `device`: [NativeEmmc starts from bsd\_init, publishes 0x747BFDF blocks of 512 bytes, and IOStorageFamily reads block 0, block 1 and block 2 with 21 sectors \(the 84 GPT entries\) through doAsyncReadWrite; the heartbeat keeps ticking with the transfer count fixed at seven, so the boot ends at the root-device wait. Log in docs/HANDOFF.zh-CN.md.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `device`: [NativeEmmc starts from bsd\_init, publishes 0x747BFDF blocks of 512 bytes, and IOStorageFamily reads block 0, block 1 and block 2 with 21 sectors \(the 84 GPT entries\) through doAsyncReadWrite; the heartbeat keeps ticking with the transfer count fixed at seven, so the boot ends at the root-device wait. Log in docs/HANDOFF.zh-CN.md.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
   Command: <code>fastboot flash vendor sirius-obs.img; fastboot reboot; capture-usb-console.py --duration 240</code>. Revision: `d867b1d6498dc4d0f4ae4e18060762dcae6c5847`.
-- `host`: [The kernel links with NativeEmmc in the image \(kernel.macho sha256 372820eb1b2cd9ecee15d769d1296771d0c8141c2681626d54651a62473446b8\); the GitHub macOS runner builds the same archive \(kernel workflow run 40386710258\).](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `host`: [The kernel links with NativeEmmc in the image \(kernel.macho sha256 372820eb1b2cd9ecee15d769d1296771d0c8141c2681626d54651a62473446b8\); the GitHub macOS runner builds the same archive \(kernel workflow run 40386710258\).](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
   Command: <code>./scripts/xnu-container.sh run bash -lc './unixnu build kernel --skip-setup -D ../sirius'</code>. Revision: `a47f0d6b4615c3cdebf92102400a1bc302eb6d73`.
-- `source`: [SDCC1 bring-up, the ADMA2 read path and the GPT parse.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/package/sirius_emmc.c)
+- `source`: [SDCC1 bring-up, the ADMA2 read path and the GPT parse.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/package/sirius_emmc.c)
 
 ## Display {#display}
 
@@ -300,7 +300,7 @@ Components: `ArmCpu`.
 
 ### Evidence
 
-- `source`: [Boot-progress panel behaviour, the panic snapshot fix and the geometry of the U-Boot framebuffer.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `source`: [Boot-progress panel behaviour, the panic snapshot fix and the geometry of the U-Boot framebuffer.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
 
 ## Input {#input}
 
@@ -484,7 +484,7 @@ Collect evidence using the next action.
 
 ### Evidence
 
-- `source`: [PSCI reset evidence and the reason sleep is disabled.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `source`: [PSCI reset evidence and the reason sleep is disabled.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
 
 ## Image assembly {#packaging}
 
@@ -540,7 +540,7 @@ Components: `XnuPrelink`.
 
 ### Evidence
 
-- `source`: [Build and deploy loop, the CI kernel artifact and the payload layout on the vendor partition.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
+- `source`: [Build and deploy loop, the CI kernel artifact and the payload layout on the vendor partition.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
 
 ## Diagnostics {#diagnostics}
 
@@ -583,8 +583,8 @@ Components: `XnuPrelink`.
 
 ### Evidence
 
-- `source`: [Entry probe, panic screen, panel rows and the evidence convention of the port.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/HANDOFF.zh-CN.md)
-- `device`: [3813 bytes of kernel log read from /dev/ttyACM0 over the DWC3 CDC console.](https://github.com/Yooglery/UniXNU-sirius/blob/b1fa97e4d1094e31857635abc042c8cd068e677f/docs/evidence/sirius-usb-console-20261026-1605.log)
+- `source`: [Entry probe, panic screen, panel rows and the evidence convention of the port.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/HANDOFF.zh-CN.md)
+- `device`: [3813 bytes of kernel log read from /dev/ttyACM0 over the DWC3 CDC console.](https://github.com/Yooglery/UniXNU-sirius/blob/528fac52a751bb2b4c7f24574b8c890229f73ce2/docs/evidence/sirius-usb-console-20261026-1605.log)
   Command: <code>sudo python3 scripts/capture-usb-console.py --wait 60 --duration 190 --output /tmp/boot.log</code>. Revision: `366abe2948fdb0c1554f7e0b89b731160f4527a4`.
 
 </div>
