@@ -42,3 +42,11 @@ See docs/.
    没 push 的补丁等于不存在。
 
 每次构建前的检查：`git status --porcelain` 为空，且当前分支与远端齐平。
+
+3. **遇到问题先查参考仓库的解决方案，禁止瞎猜瞎搞。** `UniXNU-pong` 是同 SoC（SM8475）
+   最接近的先行实现：出现故障先读它的 `board.toml`、`userland/`、`scripts/` 和
+   `migration/` 笔记；`ios-sweet-k60` 是 iOS 16 用户态的先行记录；`UniXNU-sheng` 与
+   `UniXNU` 文档补齐其余。提出的方案必须写出它来自哪个文件哪一行，或者明确声明
+   「没有找到先行实现」。反例（2026-11-07）：App cryptex 缺失被凭空说成「加一个
+   `[userdata] windows` 条目」，而 pong 的真实做法是把 AppOS 放进 OS、并替换悬空别名
+   （`userland/build-ipados18.py:260 drop_restore_app_alias`）。
