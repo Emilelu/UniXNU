@@ -1,0 +1,80 @@
+name: sync upstream
+
+# Keep the fork close to UniXNU/UniXNU without touching main directly: this job
+# merges upstream/main into a fresh chore/upstream-sync-<date> branch and opens
+# a pull request.  main only receives reviewed merges.
+
+on:
+  schedule:
+    - cron: '17 3 * * *'      # daily, 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: fetch upstream
+        run: |
+          git remote add upstream https://github.com/UniXNU/UniXNU.git
+          git fetch upstream main --no-tags
+
+      - name: check distance
+        id: check
+        run: |
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "uptodate=1" >> "$GITHUB_OUTPUT"
+            echo "behind=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "uptodate=0" >> "$GITHUB_OUTPUT"
+            echo "behind=$(git rev-list --count HEAD..upstream/main)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: build the sync branch
+        if: steps.check.outputs.uptodate == '0'
+        run: |
+          set -e
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          branch="chore/upstream-sync-$(date -u +%Y%m%d)"
+          git checkout -B "$branch"
+          if ! git merge --no-edit upstream/main; then
+            echo "::error::upstream merge conflicts; resolve them by hand in $branch"
+            git merge --abort || true
+            exit 1
+          fi
+          git push origin "$branch" --force
+          echo "BRANCH=$branch" >> "$GITHUB_ENV"
+
+      - name: open the pull request
+        if: steps.check.outputs.uptodate == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BEHIND: ${{ steps.check.outputs.behind }}
+        run: |
+          existing=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            echo "PR #$existing already tracks $BRANCH"
+            exit 0
+          fi
+          title="chore(sync): merge upstream main ($(date -u +%Y-%m-%d))"
+          body="Automated merge of UniXNU/UniXNU main into this fork; $BEHIND commits behind when this run started. Review the diff before merging: device repositories pin upstream by commit."
+          gh pr create --base main --head "$BRANCH" --title "$title" --body "$body" --label upstream-sync \
+            || gh pr create --base main --head "$BRANCH" --title "$title" --body "$body"
+
+      - name: summary
+        run: |
+          if [ "${{ steps.check.outputs.uptodate }}" = "1" ]; then
+            echo "main already contains upstream/main" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "opened or refreshed $BRANCH (${{ steps.check.outputs.behind }} commits behind)" >> "$GITHUB_STEP_SUMMARY"
+          fi

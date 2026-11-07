@@ -19,3 +19,11 @@ See docs/.
 - 一次提交只做一件事；代码与文档分成两个提交，同一 PR 里提交。
 - 提交者固定为 `Emilelu <kimiuso@vip.qq.com>`，不要使用临时或占位身份。
 - 已发布的历史不重写；确需修正（例如作者信息错误）时先说明再强推。
+
+## 分支与上游同步
+
+- `main` 只接收经过验证的合并：本体改动一律开 `feat/` `fix/` `docs/` `chore/` 等分支，
+  验证通过再合入 `main`。
+- `.github/workflows/sync-upstream.yml` 每天把 `UniXNU/UniXNU` 的 `main` 合并到
+  `chore/upstream-sync-<日期>` 分支并开 PR；它不直接写 `main`。
+- 上游原有的分支名保持不动，只整理本 fork 自己的分支。
