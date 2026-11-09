@@ -14,6 +14,7 @@ Clang and libclang are selected through llvm-config. Libraries and build product
 The xcrun, plutil and codesign shims are installed in /usr/bin for xnu's makefiles.
 """
 import argparse
+import contextlib
 import os
 import shlex
 from pathlib import Path
@@ -213,7 +214,8 @@ def llvm(prefix, work, jobs, host):
     clang = prefix / 'llvm/bin/clang'
     if not clang.exists():
         src = work / 'llvm-project'
-        git_checkout(src, 'https://github.com/llvm/llvm-project', LLVM_COMMIT)
+        if not (src / 'llvm').is_dir():
+            git_checkout(src, 'https://github.com/llvm/llvm-project', LLVM_COMMIT)
         run(['git', '-C', src, 'apply', HERE / 'llvm-xnu-builtin-type.patch'])
         run(['cmake', '-G', 'Ninja', '-S', src / 'llvm', '-B', src / 'build',
              '-DLLVM_ENABLE_PROJECTS=clang', '-DLLVM_TARGETS_TO_BUILD=AArch64',
@@ -373,8 +375,15 @@ def main(argv=None):
     jobs = args.jobs
     prefix.mkdir(parents=True, exist_ok=True)
     # The llvm-project build tree takes several GB: build on disk ($TMPDIR, else /var/tmp), not in a tmpfs /tmp.
-    with tempfile.TemporaryDirectory(prefix='unixnu-toolchain-', dir=os.environ.get('TMPDIR', '/var/tmp')) as tmp:
-        work = Path(tmp)
+    keep = os.environ.get('UNIXNU_TOOLCHAIN_WORK')
+    if keep:
+        work = Path(keep)
+        work.mkdir(parents=True, exist_ok=True)
+        _ctx = contextlib.nullcontext(work)
+    else:
+        _ctx = tempfile.TemporaryDirectory(prefix='unixnu-toolchain-', dir=os.environ.get('TMPDIR', '/var/tmp'))
+    with _ctx as tmp:
+        work = Path(tmp) if keep else Path(tmp)
         clang = llvm(prefix, work, jobs, host)
         shims(clt, xctoolchain, clang)
         cctools(clt, include, work, jobs, host)

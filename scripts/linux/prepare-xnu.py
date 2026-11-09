@@ -89,6 +89,23 @@ def rewrite_sources():
 
     (FAKEROOT / 'usr/include').mkdir(parents=True, exist_ok=True)
     shutil.copyfile(HERE / 'TargetConditionals.h', FAKEROOT / 'usr/include/TargetConditionals.h')
+    # The iPhoneOS SDK ships the Availability family; xnu's own copies live in
+    # EXTERNAL_HEADERS. Without them the platform archives stop on
+    # mach/arm/vm_types.h, which includes Availability.h, which in turn includes
+    # AvailabilityInternal.h.
+    installed = []
+    for source in (XNU / 'EXTERNAL_HEADERS', ROOT / 'EXTERNAL_HEADERS'):
+        if not source.is_dir():
+            continue
+        for header in sorted(source.glob('Availability*.h')):
+            shutil.copyfile(header, FAKEROOT / 'usr/include' / header.name)
+            installed.append(header.name)
+        if installed:
+            break
+    if installed:
+        info('installed %s into the fakeroot' % ', '.join(installed))
+    else:
+        info('warning: EXTERNAL_HEADERS/Availability*.h not found; platform archives may fail')
 
 
 def fetch(directory, url, commit, *paths):

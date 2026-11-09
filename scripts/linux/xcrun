@@ -42,6 +42,13 @@ while [ $# -gt 0 ]; do
             exit 1
             ;;
         -show-sdk-path|--show-sdk-path)
+            # The SDKROOT answer is the fakeroot for every target: the kernel and
+            # the IOStorageFamily header step both need the iOS kernel headers it
+            # carries. SETUP host tools need the host C library instead, and they
+            # ask for it with UNIXNU_HOST_SDKROOT through HOST_SDKROOT.
+            if [ "${sdk}" = "macosx" ] && [ -n "${UNIXNU_HOST_SDKROOT:-}" ]; then
+                echo "${UNIXNU_HOST_SDKROOT}"; exit 0
+            fi
             echo "${UNIXNU_SDKROOT:-${sdk}}"; exit 0 ;;
         -show-sdk-version|--show-sdk-version)
             echo "${UNIXNU_SDK_VERSION:-17.0}"; exit 0 ;;
