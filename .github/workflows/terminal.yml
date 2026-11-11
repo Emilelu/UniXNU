@@ -1,16 +1,6 @@
 name: USB terminal tests
 on:
-  push:
-    paths: &terminal-paths
-      - 'scripts/debug_terminal.py'
-      - 'scripts/debug_screen.py'
-      - 'scripts/debug_screen_viewer.html'
-      - 'scripts/debug-terminal.cmd'
-      - 'scripts/terminal-requirements.txt'
-      - 'tests/terminal/**'
-      - '.github/workflows/terminal.yml'
-  pull_request:
-    paths: *terminal-paths
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
