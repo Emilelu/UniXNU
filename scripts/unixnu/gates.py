@@ -11,8 +11,9 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
-from .errors import Error
+from .util import Error
 
 GATED = ('build', 'bootimg', 'vendor_boot', 'ipsw', 'release')
 
@@ -27,11 +28,16 @@ def preflight(ctx, command: str, skip: bool = False) -> None:
     script = ctx.device / 'scripts' / 'check-rules.py'
     if not script.is_file():
         raise Error(f'{script} is missing: refusing to {command} without the compliance registry')
+    repo = os.environ.get('K60_REPO') or str(ctx.device)
+    if not (Path(repo) / 'docs' / 'engineering' / 'RULES.toml').is_file():
+        raise Error(
+            f'{command} refused: {repo} has no docs/engineering/RULES.toml, so the registry '
+            f'cannot run. Point K60_REPO at the device repository that produced this build input.')
     env = dict(os.environ)
     if env.get('K60_FORCE_NEW') and not env.get('K60_PORTING_ARGS'):
         env['K60_PORTING_ARGS'] = '--force-new-series'
-    print(f'unixnu: {command}: running the compliance registry', file=sys.stderr)
-    done = subprocess.run([sys.executable, str(script)], cwd=str(ctx.device),
+    print(f'unixnu: {command}: running the compliance registry ({repo})', file=sys.stderr)
+    done = subprocess.run([sys.executable, str(script), '--repo', repo], cwd=str(ctx.device),
                           env=env, capture_output=True, text=True, check=False)
     if done.returncode == 0:
         return

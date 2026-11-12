@@ -7,6 +7,7 @@ import sys
 
 from . import bootimg, components, feeds, firmware, ipsw, kernel, package, patches, payload, pipeline, profiles, runtime, tree, userdata, vendor_boot
 from .config import LOCAL_KINDS, Context, parse_config
+from .gates import GATED, preflight
 from .util import Error, expand, git, log
 
 STEPS = ('kernel', 'package', 'firmware', 'payload')
