@@ -15,6 +15,8 @@ OPTIONAL_STEPS = ('userdata', 'runtime')
 
 def common():
     p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--skip-gates", action="store_true",
+                   help="do not run the compliance registry before this step")
     p.add_argument('--config', metavar='FILE', help='local build inputs (default: unixnu.local.toml in the UniXNU checkout)')
     p.add_argument('-D', '--device', metavar='DIR', help='device repository (remembered; or UNIXNU_DEVICE)')
     p.add_argument('--os', metavar='VERSION', help='OS profile for this run: 17, 26, 27 or a profiles/os directory name (default: the board\'s os_profile)')
@@ -347,6 +349,7 @@ def main(argv=None):
         args.command = 'build'
     try:
         ctx = Context(args)
+        preflight(ctx, args.command, getattr(args, "skip_gates", False))
         {'defconfig': cmd_defconfig, 'fetch': cmd_fetch, 'tree': lambda c: prepare(c), 'build': cmd_build,
          'bootimg': cmd_bootimg, 'vendor_boot': cmd_vendor_boot, 'ipsw': cmd_ipsw, 'status': cmd_status,
          'clean': cmd_clean, 'release': cmd_release}[args.command](ctx)
