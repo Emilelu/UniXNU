@@ -27,14 +27,25 @@ def paths(ctx):
     return out, out / 'payload.img', out / 'payload.json'
 
 
+# DarwinBoot's command line buffer, minus the NUL terminator.
+DARWIN_BOOT_LINE_MAX = 607
+
+
 def check_args(arguments):
     for value in arguments:
         if not re.fullmatch(r'[A-Za-z0-9_.\-]+(=[A-Za-z0-9_.,/\-]+)?', value):
             raise Error(f'unsupported kernel argument: {value}')
     line = ' '.join(arguments)
-    # DarwinBoot copies the command line into a 1024-byte buffer and refuses a longer one.
-    if len(line) > 1000:
-        raise Error(f'the kernel command line is {len(line)} bytes; the limit is 1000')
+    # DarwinBoot copies the command line into CommandLine[DARWIN_BOOT_LINE_LENGTH]
+    # and returns EFI_BAD_BUFFER_SIZE once Index >= sizeof - 1, so 607 bytes
+    # (608 minus the terminator) is the real ceiling.  The previous 1000-byte
+    # check never fired for command lines DarwinBoot refuses outright: the
+    # kernel is never loaded and the USB console stays at 0 bytes, which looks
+    # exactly like an early kernel death.  Evidence: Platforms/Xiaomi/
+    # DarwinBootPkg/Driver/BootArgs.h:8 and DarwinBoot.c:676-690.
+    if len(line) > DARWIN_BOOT_LINE_MAX:
+        raise Error(f'the kernel command line is {len(line)} bytes; '
+                    f'DarwinBoot accepts at most {DARWIN_BOOT_LINE_MAX}')
     return line
 
 
@@ -48,6 +59,12 @@ def check_data_input(ctx, data):
         selected = ctx.device / 'configs' / ctx.config_name
         if selected.is_file():
             config = parse_config(selected.read_text())
+    # A UFS-owned Data volume is published from the SHNGROOT window the kernel
+    # finds on the block device (CONFIG_XNU_OWNER_DATA_UFS); the initrd seed only
+    # shadows it, and the firmware then hands the kernel a FAT that is not the
+    # real Data volume. Keep the seed requirement for every other owner.
+    if config.get('XNU_OWNER_DATA_UFS'):
+        return
     if config.get('XNU_OWNER_DATA_MOUNT'):
         raise Error('CONFIG_XNU_OWNER_DATA_MOUNT requires --data-ramdisk FILE (or [build] data_ramdisk); '
                     'persistent Data still needs its original seed to publish the volume')
