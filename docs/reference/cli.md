@@ -123,6 +123,7 @@ Runs the fixed steps `deps`, `preflight`, `patches`, `build`, `pack` and `verify
 | `--skip-setup` | Marks Setup as done in a copy of the Data seed |
 | `--data-ramdisk FILE` | Data ramdisk seed |
 | `--unique-chip-id HEX` | Platform seed for the ADT |
+| `--modem-carrier DIR` | Directory holding `modem-table.txt` and the `.lzma` streams. Payload only |
 | `--ipsw PATH_OR_URL` | Target IPSW |
 | `--dry-run` | Userdata dry run |
 | `--target DEBUG\|RELEASE` | EDK II target |
@@ -146,6 +147,7 @@ Runs the fixed steps `deps`, `preflight`, `patches`, `build`, `pack` and `verify
 | `UNIXNU_DTB` | `--dtb` |
 | `UNIXNU_IPSW` | `--ipsw` |
 | `UNIXNU_UNIQUE_CHIP_ID` | `--unique-chip-id` |
+| `UNIXNU_MODEM_CARRIER` | `--modem-carrier` |
 | `JOBS` | `-j` |
 
 ## Exit behavior
@@ -160,7 +162,8 @@ Runs the fixed steps `deps`, `preflight`, `patches`, `build`, `pack` and `verify
 | Firmware volume size mismatch | Error naming the size |
 | Payload larger than `size_mib` | Error with the size to raise |
 | Invalid kernel argument | Error naming the argument |
-| Kernel command line over 1000 bytes | Error naming the length and the limit |
+| Kernel command line over 607 bytes | Error naming the length and the limit |
+| Carrier table and streams disagree | Error naming the stream and the declared size |
 | Missing platform seed | Error with the `--unique-chip-id` hint |
 | Example device repository | Error before build or bootimg |
 

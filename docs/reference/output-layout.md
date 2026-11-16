@@ -128,6 +128,11 @@ One log per step:
 | `panic_screen` | Panic screen patch applied |
 | `payload_sha256` | Payload image hash |
 | `payload_bytes` | Payload image size |
+| `modem_carrier_files` | Streams in the carrier, `null` when the switch is off |
+| `modem_carrier_bytes` | Sum of the declared decompressed sizes |
+| `modem_carrier_compressed_bytes` | Sum of the stream file sizes |
+| `modem_carrier_sha256` | Hash over the names, sizes and contents |
+| `modem_carrier_placeholder` | Whether `K60ModemImage` was published |
 | `hardware_tested` | Qualification state |
 
 ## userdata-root.json
