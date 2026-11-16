@@ -40,6 +40,11 @@ def common():
     p.add_argument('--data-ramdisk', metavar='FILE', help='preserved Data ramdisk seed for this installation')
     p.add_argument('--init-data', action='store_true', help='create and retain a new Data seed from the IPSW for a FIRST installation; requires kernel build')
     p.add_argument('--gpu-addon', metavar='FILE', help='GPU addon file (scripts/make-gpu-addon.py) the kernel writes into the Data volume at boot')
+    p.add_argument('--modem-carrier', metavar='DIR',
+                   help='directory of LZMA streams for the modem carrier (EFI/UniXNU/MODEM) plus the '
+                        'modem-table.txt they were generated against; also publishes the 16-byte '
+                        'K60ModemImage placeholder, because the firmware refuses either half alone. '
+                        'Off unless given; or UNIXNU_MODEM_CARRIER')
     p.add_argument('--unique-chip-id', metavar='HEX', help='platform seed for the device tree; or UNIXNU_UNIQUE_CHIP_ID')
     p.add_argument('--ipsw', metavar='PATH_OR_URL', help='the target IPSW: a local file or an https URL (default: url of board.toml [ipsw]); or UNIXNU_IPSW')
     p.add_argument('--dry-run', action='store_true', help='userdata: check sizes and pins, write nothing')
@@ -187,6 +192,12 @@ def cmd_build(ctx):
 
 def cmd_bootimg(ctx):
     ctx.refuse_example()
+    # The carrier is a directory of files inside the payload's FAT volume, so the
+    # boot image never carries it.  Accepting the option here and ignoring it is how
+    # a build looks like it shipped the modem while nothing changed.
+    if getattr(ctx.args, 'modem_carrier', None):
+        raise Error('--modem-carrier belongs to the payload step: the carrier is packed into '
+                    'the payload volume, not the boot image')
     uefi = need_uefi(ctx)
     fd = expand(ctx.args.fd) if ctx.args.fd else firmware.fd_path(ctx, uefi, ctx.args.target)
     dtb = ctx.option('dtb', 'UNIXNU_DTB')

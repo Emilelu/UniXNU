@@ -101,6 +101,84 @@ def write_volume(stage, image, label, size_mib):
         run(['mcopy', '-i', image, '-s', '-Q', '-m', entry, '::/'], env=env, capture=True)
 
 
+# The modem carrier: the payload ships the modem firmware as one LZMA-alone
+# stream per loadable segment, and DarwinBoot decodes each stream straight into
+# its physical address inside the modem carveout before XNU starts.  Both halves
+# of the handoff travel together - the streams under MODEM_DIRECTORY and the
+# 16-byte zero K60ModemImage placeholder in /chosen/memory-map - because
+# DarwinBoot refuses to boot on either half alone (uefi 72e51ca / 5d96806).
+#
+# The table that lists the segments must travel with the bytes.  A carrier that
+# only agrees with itself can still disagree with the firmware's own segment
+# table, and that disagreement is invisible until the boot hangs; keeping one
+# table (gen-modem-table.py --manifest) and checking every stream against it is
+# the P-190 lesson - an input that cannot be compared is not checked at all.
+MODEM_DIRECTORY = 'EFI/UniXNU/MODEM'
+MODEM_MANIFEST = 'modem-table.txt'
+MODEM_HEADER = 13       # LZMA-alone: 1 properties byte, 4 dictionary bytes, 8 uncompressed-size bytes
+MODEM_PROPS_LIMIT = 225  # (pb * 5 + lp) * 9 + lc with every property below 5
+
+
+def read_modem_carrier(directory):
+    """Check a modem carrier directory against the table that ships with it.
+
+    Returns what the payload report records.  Nothing here decodes a stream: the
+    firmware does that at boot, and a host-side decode would only prove that this
+    machine and the firmware agree about LZMA.
+    """
+    if not directory.is_dir():
+        raise Error(f'modem carrier is not a directory: {directory}')
+    manifest = directory / MODEM_MANIFEST
+    if not manifest.is_file():
+        raise Error(f'modem carrier {directory} has no {MODEM_MANIFEST}; write it with '
+                    f'"python3 scripts/gen-modem-table.py <firmware-dir> --manifest {MODEM_MANIFEST}"')
+    wanted = {}
+    for number, line in enumerate(manifest.read_text(encoding='utf-8').splitlines(), 1):
+        if not line.strip():
+            continue
+        fields = line.split()
+        if len(fields) != 2 or not fields[1].isdigit():
+            raise Error(f'{MODEM_MANIFEST}:{number} is not "<segment> <bytes>": {line.strip()!r}')
+        if fields[0] in wanted:
+            raise Error(f'{MODEM_MANIFEST}:{number} lists {fields[0]} twice')
+        wanted[fields[0]] = int(fields[1])
+    if not wanted:
+        raise Error(f'{MODEM_MANIFEST} lists no segments')
+    present = {}
+    for path in sorted(directory.iterdir()):
+        if path.name == MODEM_MANIFEST:
+            continue
+        if not path.is_file() or path.suffix != '.lzma':
+            raise Error(f'modem carrier {directory} holds {path.name}; only <segment>.lzma streams belong in it')
+        present[path.stem] = path
+    missing = sorted(set(wanted) - set(present))
+    if missing:
+        raise Error(f'modem carrier is missing {len(missing)} stream(s) {MODEM_MANIFEST} lists: '
+                    f'{", ".join(missing[:4])}{" ..." if len(missing) > 4 else ""}')
+    extra = sorted(set(present) - set(wanted))
+    if extra:
+        # A stream the table does not list is dead weight in a volume whose size is
+        # fixed by the ABL margin; refuse rather than silently leave it unloaded.
+        raise Error(f'modem carrier holds {len(extra)} stream(s) {MODEM_MANIFEST} does not list: '
+                    f'{", ".join(extra[:4])}{" ..." if len(extra) > 4 else ""}')
+    digest, declared = hashlib.sha256(), 0
+    for name in sorted(wanted):
+        path = present[name]
+        with path.open('rb') as stream:
+            header = stream.read(MODEM_HEADER)
+        if len(header) != MODEM_HEADER:
+            raise Error(f'{path.name} is {len(header)} bytes; an LZMA-alone header alone is {MODEM_HEADER}')
+        if header[0] >= MODEM_PROPS_LIMIT:
+            raise Error(f'{path.name} does not start with LZMA properties (first byte 0x{header[0]:02x})')
+        size = int.from_bytes(header[5:13], 'little')
+        if size != wanted[name]:
+            raise Error(f'{path.name} declares {size} bytes; {MODEM_MANIFEST} says {wanted[name]}')
+        declared += size
+        digest.update(f'{path.name}:{path.stat().st_size}:{sha256_file(path)}\n'.encode())
+    return {'directory': directory, 'names': sorted(wanted), 'declared': declared,
+            'compressed': sum(present[name].stat().st_size for name in wanted), 'sha256': digest.hexdigest()}
+
+
 def skip_setup_seed(ctx, base, tool_path, tool_args=()):
     """A copy of the Data seed whose preferences mark Setup (the Hello pages) as done; cached by the hash of the base and the
     tool's extra arguments (board.toml [payload] skip_setup_args)."""
@@ -169,6 +247,21 @@ def build(ctx, kernel=None):
                 int.from_bytes(policy_header[24:32], 'little') != policies.stat().st_size):
             raise Error(f'Invalid root-policy bundle header: {policies}')
     seed = getattr(args, 'unique_chip_id', None) or os.environ.get('UNIXNU_UNIQUE_CHIP_ID')
+    # One switch for both halves of the modem handoff.  The command line wins, the
+    # environment variable stands in for it, and board.toml [payload] modem_carrier
+    # is the board's own default path ({tree} and {out} are expanded).  No board in
+    # this tree sets it, so the carrier stays off unless a build asks for it.
+    carrier = None
+    requested = getattr(args, 'modem_carrier', None) or os.environ.get('UNIXNU_MODEM_CARRIER') or spec.get('modem_carrier')
+    if requested:
+        if ctx.schema_version != 2:
+            raise Error('the modem carrier needs a format 2 device tree: its K60ModemImage '
+                        'placeholder is part of the generated ADT')
+        requested = str(requested)
+        if '{' in requested:
+            requested = requested.format(tree=ctx.tree, out=ctx.work)
+        carrier = read_modem_carrier(expand(requested))
+        log(f'modem carrier: {len(carrier["names"])} streams, {carrier["declared"]} bytes declared')
     adt = spec.get('adt', {})
     if adt.get('unique_chip_id') == 'required' and not seed:
         raise Error('the platform seed is not stored in any repository: pass --unique-chip-id HEX (or UNIXNU_UNIQUE_CHIP_ID)')
@@ -228,12 +321,20 @@ def build(ctx, kernel=None):
         shutil.copyfile(policies, payloads / 'kernel.macho.vroot')
     if data:
         shutil.copyfile(data, payloads / 'scratch-data.img')
+    if carrier:
+        # Straight copy: the streams are already compressed to their final form, and
+        # the firmware decodes each one into its own physical address.  Copying before
+        # the timestamp pass and the size check keeps the volume reproducible.
+        modem = stage / MODEM_DIRECTORY
+        modem.mkdir(parents=True)
+        for name in carrier['names']:
+            shutil.copyfile(carrier['directory'] / f'{name}.lzma', modem / f'{name}.lzma')
     if ctx.schema_version == 2:
         from .devicetree import compile_hardware, generate
         dtb = compile_hardware(ctx)
         (payloads / 'kernel.macho.adt').write_bytes(generate(
             dtb, ctx.board, unique_chip_id=seed, data=bool(data), trust=bool(trust), addon=bool(addon),
-            root_policies=bool(policies)))
+            root_policies=bool(policies), modem=bool(carrier)))
     else:
         command = ['python3', ctx.tree / adt['tool'], '--output', payloads / 'kernel.macho.adt', '--dram-size', str(spec['dram_size'])]
         for key, flag in (('owned_memory_size', '--owned-memory-size'), ('root_match_volume_uuid', '--root-match-volume-uuid'),
@@ -292,7 +393,15 @@ def build(ctx, kernel=None):
                    'adt_sha256': sha256_file(payloads / 'kernel.macho.adt'), 'kernel_args': line,
                    'trust_cache_sha256': sha256_file(trust) if trust else None, 'gpu_addon_sha256': sha256_file(addon) if addon else None,
                    'data_ramdisk_sha256': sha256_file(data) if data else None, 'skip_setup': bool(getattr(args, 'skip_setup', False)), 'panic_screen': bool(spec.get('panic_screen')),
-                   'payload_sha256': sha256_file(image), 'payload_bytes': image.stat().st_size, 'hardware_tested': False}
+                   'payload_sha256': sha256_file(image), 'payload_bytes': image.stat().st_size, 'hardware_tested': False,
+                   # The carrier's own identity, not a path: a later byte comparison
+                   # needs to name the bytes that were shipped, and a path says nothing
+                   # about which revision of them it was.
+                   'modem_carrier_files': len(carrier['names']) if carrier else None,
+                   'modem_carrier_bytes': carrier['declared'] if carrier else None,
+                   'modem_carrier_compressed_bytes': carrier['compressed'] if carrier else None,
+                   'modem_carrier_sha256': carrier['sha256'] if carrier else None,
+                   'modem_carrier_placeholder': bool(carrier)}
     report.write_text(json.dumps(data_report, indent=2) + '\n')
     shutil.rmtree(stage)
     log(f'payload: {image} ({image.stat().st_size >> 20} MiB)')

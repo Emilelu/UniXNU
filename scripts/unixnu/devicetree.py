@@ -288,7 +288,7 @@ def platform_node(name, table):
     return node(name, properties, children)
 
 
-def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon=False, root_policies=False):
+def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon=False, root_policies=False, modem=False):
     root = read_fdt(Path(dtb).read_bytes())
     entries = list(root.walk())
     handles = {}
@@ -338,6 +338,11 @@ def generate(dtb, config, *, unique_chip_id=None, data=False, trust=False, addon
     mappings += [('TrustCache', bytes(16))] if trust else []
     mappings += [('GpuAddon', bytes(16))] if addon else []
     mappings += [('RootPolicies', bytes(16))] if root_policies else []
+    # Paired with the MODEM directory of the payload: DarwinBoot refuses to start
+    # when the placeholder is missing but the carrier is there, and refuses when a
+    # stale placeholder claims a range it never published.  Sixteen zero bytes is
+    # the exact value ImageCarrierLoad accepts (uefi 72e51ca / 5d96806).
+    mappings += [('K60ModemImage', bytes(16))] if modem else []
     children = [node('chosen', chosen, [node('memory-map', mappings), node('manifest-properties')])]
     cpus = next((entry for entry in root.children if entry.name == 'cpus'), None)
     if cpus is None:
