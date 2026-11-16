@@ -192,6 +192,21 @@ def a_multiplied_table_row_is_refused():
 
 
 @case
+def a_name_the_firmware_would_never_open_is_refused():
+    # ImageCarrierLib builds L"%a.lzma" from the row and probes "modem.b01" before
+    # it loads anything, so a row without that shape names a file no boot opens.
+    with tempfile.TemporaryDirectory() as tmp:
+        root = carrier(pathlib.Path(tmp), [('b01', 4)], {'b01': (4, b'abcd')})
+        try:
+            payload.read_modem_carrier(root)
+        except Error as exc:
+            if 'never loaded' not in str(exc):
+                raise AssertionError(f'wrong message: {exc}')
+            return
+    raise AssertionError('a table row the firmware never opens was accepted')
+
+
+@case
 def the_placeholder_is_off_unless_the_switch_is_on():
     if inspect.signature(devicetree.generate).parameters['modem'].default is not False:
         raise AssertionError('generate() no longer defaults the placeholder to off')

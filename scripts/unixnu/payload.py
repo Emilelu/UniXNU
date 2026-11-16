@@ -117,6 +117,11 @@ MODEM_DIRECTORY = 'EFI/UniXNU/MODEM'
 MODEM_MANIFEST = 'modem-table.txt'
 MODEM_HEADER = 13       # LZMA-alone: 1 properties byte, 4 dictionary bytes, 8 uncompressed-size bytes
 MODEM_PROPS_LIMIT = 225  # (pb * 5 + lp) * 9 + lc with every property below 5
+# DarwinBoot builds L"%a.lzma" from the table name (ImageCarrierLib.c:84) and
+# probes the literal sentinel "modem.b01" before it loads anything, so a row
+# that does not have that shape names a file the firmware never opens.  That
+# fails at boot as a missing sentinel instead of here; check the shape now.
+MODEM_NAME = re.compile(r'modem\.b[0-9]{2}\Z')
 
 
 def read_modem_carrier(directory):
@@ -141,6 +146,9 @@ def read_modem_carrier(directory):
             raise Error(f'{MODEM_MANIFEST}:{number} is not "<segment> <bytes>": {line.strip()!r}')
         if fields[0] in wanted:
             raise Error(f'{MODEM_MANIFEST}:{number} lists {fields[0]} twice')
+        if not MODEM_NAME.match(fields[0]):
+            raise Error(f'{MODEM_MANIFEST}:{number} names {fields[0]!r}; DarwinBoot opens '
+                        f'"<name>.lzma" and probes "modem.b01" first, so a row like that is never loaded')
         wanted[fields[0]] = int(fields[1])
     if not wanted:
         raise Error(f'{MODEM_MANIFEST} lists no segments')
