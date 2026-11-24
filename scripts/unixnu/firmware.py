@@ -26,6 +26,19 @@ def build(ctx, modules, uefi, edk2, target='DEBUG'):
     for name in ('clang', 'python3', 'make'):
         tool(name)
     base, size = config['uefi_fd']['base'], config['uefi_fd']['size']
+    # Directories the firmware's PACKAGES_PATH names with `{tree}/...` but that no
+    # component provides: they live in the device repo and have to be staged into the
+    # build tree every time, because the tree is regenerated. Without this the EDK II
+    # build dies with `error 000E: One Path in PACKAGES_PATH doesn't exist`.
+    for rel in fw.get('tree_inputs', []):
+        src, dst = ctx.device / rel, ctx.tree / rel
+        if not src.is_dir():
+            raise Error(f'{src} missing: [firmware] tree_inputs names a directory the device repo does not have')
+        if dst.exists():
+            shutil.rmtree(dst)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(src, dst)
+        log(f'firmware: staged {rel} into the tree ({sum(1 for p in dst.rglob("*") if p.is_file())} files)')
     if fw.get('submodules'):
         # Upstream Mu-Silicium submodules the board needs (Mu_Basecore is provided separately).
         log('firmware: initializing submodules of the Mu-Silicium checkout')
