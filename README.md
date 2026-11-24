@@ -1,4 +1,11 @@
 <p align="center">
+
+## 接手 / Handoff
+
+- [`HANDOFF.md`](HANDOFF.md) —— 本仓库职责与交接入口
+- [移植总方案](https://github.com/Emilelu/UniXNU-mondrian/blob/main/docs/engineering/PORTING-PLAN.md)
+- [工作流](https://github.com/Emilelu/UniXNU-mondrian/blob/main/docs/engineering/WORKFLOW.md)
+
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
