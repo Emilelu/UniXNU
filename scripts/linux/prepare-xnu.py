@@ -9,6 +9,7 @@
 Each rewrite checks whether it is still needed, so both modes can run on every build.
 """
 from pathlib import Path
+import os
 import shutil
 import subprocess
 import sys
@@ -126,8 +127,11 @@ def build_cc_kext():
     # kernel headers (Kernel.framework); inttypes.h, stdio.h and gethostuuid.h come from Libc and Libsyscall, as they
     # do from an SDK's usr/include.
     out = FAKEROOT / 'usr/local/lib/kernel/libcc_kext.a'
-    if out.is_file():
-        return
+    # The kernel's own target, not a fixed arm64/iOS 17: an arm64e kernel refuses
+    # an arm64 archive ("ignoring file ... building for iOS-arm64e but attempting
+    # to link with file built for iOS-arm64") and loses the profile symbols.
+    arch = os.environ.get('UNIXNU_XNU_ARCH', 'arm64')
+    ios = os.environ.get('UNIXNU_IOS_VERSION', '17.0')
     src = ROOT / '.cache/linux'
     fetch(src / 'llvm-project', 'https://github.com/llvm/llvm-project', LLVM_COMMIT,
           'compiler-rt/lib/profile', 'compiler-rt/include/profile')
@@ -137,7 +141,7 @@ def build_cc_kext():
     objects.mkdir(parents=True, exist_ok=True)
     out.parent.mkdir(parents=True, exist_ok=True)
     for name in PROFILE_SOURCES:
-        subprocess.run(['xcrun', 'clang', '-target', 'arm64-apple-ios17.0', '-arch', 'arm64', '-isysroot', FAKEROOT,
+        subprocess.run(['xcrun', 'clang', '-target', f'{arch}-apple-ios{ios}', '-arch', arch, '-isysroot', FAKEROOT,
                         '-mkernel', '-DKERNEL_USE', '-O3', '-fPIC', '-w',
                         '-I', rt / 'include', '-I', FAKEROOT / 'System/Library/Frameworks/Kernel.framework/Headers',
                         '-idirafter', src / 'Libc/include', '-idirafter', XNU / 'libsyscall/wrappers',

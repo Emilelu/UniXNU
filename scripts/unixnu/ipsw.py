@@ -12,8 +12,10 @@ import io
 import json
 import platform
 import plistlib
+import shutil
 import struct
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -198,8 +200,8 @@ class Ipsw:
 def decrypt_aea(path):
     """Decrypt an AEA archive beside it (name without .aea), cached with the sha256 of both files.
 
-    The key is fetched by `ipsw fw aea --key` from the key URL in the archive header and passed to macOS aea;
-    it is not written to disk or the log.
+    On macOS the key comes from `ipsw fw aea --key` and `/usr/bin/aea` decrypts it; on other hosts
+    `ipsw fw aea` does both in Go. The key is never written to disk or the log.
     """
     out = path.with_suffix('')
     record = out.with_suffix(out.suffix + '.json')
@@ -209,7 +211,26 @@ def decrypt_aea(path):
                 and data.get('size') == out.stat().st_size:
             return out
     if platform.system() != 'Darwin':
-        raise Error(f'{path.name} is AEA encrypted; decrypting it needs macOS /usr/bin/aea')
+        # ipsw unwraps the AEA key and decrypts in Go on any host; only Apple's
+        # aea tool is macOS-only. It names the output after the input without
+        # the .aea suffix, so it lands exactly where the macOS branch writes.
+        binary = tool('ipsw', 'ipsw fw aea decrypts Apple Encrypted Archives on Linux (github.com/blacktop/ipsw)')
+        log(f'ipsw: decrypting {path.name}')
+        scratch = Path(tempfile.mkdtemp(dir=path.parent, prefix='.aea-'))
+        try:
+            result = subprocess.run([binary, 'fw', 'aea', str(path), '--output', str(scratch)],
+                                    capture_output=True, text=True)
+            produced = scratch / out.name
+            if result.returncode or not produced.is_file():
+                detail = (result.stderr or result.stdout).strip()[-300:]
+                raise Error(f'ipsw fw aea of {path.name} failed: {detail}')
+            produced.replace(out)
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+        source = json.loads(path.with_suffix(path.suffix + '.json').read_text())
+        record.write_text(json.dumps({'member': source.get('member'), 'aea_sha256': source.get('sha256'),
+                                      'size': out.stat().st_size, 'sha256': sha256_file(out)}, indent=2) + '\n')
+        return out
     tool('aea', 'macOS /usr/bin/aea decrypts AEA disk images')
     ipsw = tool('ipsw', 'the ipsw tool fetches the AEA key (brew install blacktop/tap/ipsw)')
     log(f'ipsw: fetching the AEA key of {path.name}')

@@ -1,1 +1,1 @@
-/home/emilelu/hackios/UniXNU-mondrian/scripts/build-pong-adreno-platform-linux.py
+../../../UniXNU-mondrian/scripts/build-pong-adreno-platform-linux.py

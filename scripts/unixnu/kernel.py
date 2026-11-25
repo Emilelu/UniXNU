@@ -79,8 +79,12 @@ def toolchain_path(path=None):
 def linux_env(ctx):
     """Environment of the kernel step on a Linux host, with the toolchain of scripts/linux/setup-toolchain.py.
 
-    The xcrun shim answers every --sdk query with the fakeroot this build makes. The target is plain arm64 for
-    iOS 17, so the clang wrapper adds only the flag that keeps C++ static destructors in __mod_term_func.
+    The xcrun shim answers every --sdk query with the fakeroot this build makes. The target comes from the
+    arch and OS profiles (arm64 iOS 17 when they say nothing): the clang wrapper prepends it to every compile,
+    so a hardcoded iOS 17 target here would make an arm64e iOS 27 kernel compile against the wrong deployment.
+    The wrapper also adds the ptrauth discrimination flag Apple turns on for -mkernel, which upstream clang
+    leaves opt-in, and the flag that keeps C++ static destructors in __mod_term_func. HOST_CC and MIGCOM point
+    at the glibc-based host tools, so SETUP and other build-time helpers never compile through the Darwin target.
     CCC_OVERRIDE_OPTIONS (read by the clang driver itself, so also by the archive builders that replay xnu's
     compile records) turns off two warnings that upstream clang has and Apple clang does not; the builders compile
     with -Werror.
@@ -92,13 +96,20 @@ def linux_env(ctx):
         if not path.exists():
             raise Error(f'{path} missing; run "sudo scripts/linux/setup-toolchain.py {toolchain}"')
     fakeroot = ctx.tree / '.cache/fakeroot'
+    arch = ctx.board.get('arch', {}).get('name', 'arm64')
+    ios = str(ctx.board.get('os', {}).get('ios_version', '17.0'))
+    extra = '-mllvm -disable-atexit-based-global-dtor-lowering'
+    if arch == 'arm64e':
+        extra = '-fptrauth-function-pointer-type-discrimination ' + extra
     return {'PATH': os.pathsep.join([str(clt / 'bin'), str(toolchain / 'bin'), os.environ.get('PATH', '')]),
             'LC_ALL': 'C', 'CLT_PREFIX': str(clt), 'XCTOOLCHAIN_PREFIX': str(xctoolchain),
+            'PLATFORM': 'iPhoneOS', 'HOST_CC': str(clt / 'bin/xnu-host-cc'),
+            'MIGCOM': str(clt / 'libexec/migcom'),
             'XNU_TOOLCHAIN_BIN': f'{clt / "bin"} {xctoolchain / "bin"}',
-            'UNIXNU_SDKROOT': str(fakeroot), 'UNIXNU_SDK_VERSION': '17.0',
+            'UNIXNU_SDKROOT': str(fakeroot), 'UNIXNU_SDK_VERSION': ios,
             'UNIXNU_PLATFORM_PATH': str(fakeroot / 'Platforms/iPhoneOS.platform'),
-            'CROSS_CLANG': str(toolchain / 'llvm/bin/clang'), 'DARWIN_TRIPLE': 'arm64-apple-ios17.0',
-            'CROSS_EXTRA_FLAGS': '-mllvm -disable-atexit-based-global-dtor-lowering',
+            'CROSS_CLANG': str(toolchain / 'llvm/bin/clang'), 'DARWIN_TRIPLE': f'{arch}-apple-ios{ios}',
+            'CROSS_EXTRA_FLAGS': extra,
             'CCC_OVERRIDE_OPTIONS': '# +-Wno-missing-designated-field-initializers +-Wno-unused-but-set-global'}
 
 

@@ -18,6 +18,12 @@ pins = json.loads((ROOT / 'scripts/data/adreno-inputs.json').read_text())
 TOKEN = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
 
 
+def _download(url, headers):
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return response.read()
+
+
 def fetch(item):
     path, url, expected, blob, encoding = item
     if path.exists():
@@ -26,13 +32,26 @@ def fetch(item):
         headers = {'User-Agent': 'sheng-offline-adreno-audit'}
         if TOKEN and urllib.parse.urlsplit(url).hostname in ('api.github.com', 'raw.githubusercontent.com'):
             headers['Authorization'] = f'Bearer {TOKEN}'
-        request = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(request, timeout=30) as response:
-            data = response.read()
+        try:
+            data = _download(url, headers)
+        except urllib.error.URLError:
+            # raw.githubusercontent.com is refused on some networks (SSL EOF while
+            # reading), while api.github.com works. The contents API returns the
+            # same bytes base64-encoded at the same commit; the hash check below
+            # still decides, so a wrong fallback fails loudly instead of silently.
+            if 'raw.githubusercontent.com' not in url:
+                raise
+            parts = url[len('https://raw.githubusercontent.com/'):].split('/')
+            owner, repo, commit, tail = parts[0], parts[1], parts[2], '/'.join(parts[3:])
+            api = 'https://api.github.com/repos/%s/%s/contents/%s?ref=%s' % (owner, repo, tail, commit)
+            data = _download(api, headers)
+            encoding = 'api-contents'
         if blob:
             data = base64.b64decode(json.loads(data)['content'])
         elif encoding == 'gitiles-base64':
             data = base64.b64decode(data, validate=False)
+        elif encoding == 'api-contents':
+            data = base64.b64decode(json.loads(data)['content'], validate=False)
     if hashlib.sha256(data).hexdigest() != expected['sha256'] or (expected.get('bytes') and len(data) != expected['bytes']):
         raise ValueError('Pinned input hash/size differs: ' + path.name)
     if blob and hashlib.sha1(('blob ' + str(len(data)) + '\0').encode() + data).hexdigest() != blob:
