@@ -25,7 +25,7 @@ def case(fn):
 @case
 def the_limit_matches_darwinboot():
     boot_args_h = pathlib.Path(
-        '/mnt/e/hackios/uefi-mondrian/Platforms/Xiaomi/DarwinBootPkg/Driver/BootArgs.h')
+        '/mnt/e/iOS Port/Sources/Repos/UEFI/uefi-mondrian/Platforms/Xiaomi/DarwinBootPkg/Driver/BootArgs.h')
     if not boot_args_h.is_file():
         print('  skip: BootArgs.h not reachable from here')
         return

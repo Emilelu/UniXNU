@@ -184,7 +184,7 @@ Components: `ArmDTPlatform`, `ArmCpu`, `XnuPrelink`.
 - `host`: [8.625 GiB arena and 7 GiB window; strict v4 round trip PASS; image sha256 8ea52daf4b3e926d4840e13a73fa00c9cadf9b3f1e97e1ececfdaa446e1afc34.](https://github.com/Emilelu/UniXNU-mondrian/blob/c39ff292eee2726c0135f3ba3a98462c9c21d8de/docs/MEASURED-HIGH-WINDOW-2026-11-02.md)
   Command: <code>python3 repair-high-window.py; build-uefi-8g.sh; build-kernel-summary.sh; package-textonly.py</code>. Revision: `48abe35d0a0a57f5fea9f9ba1e570800021ae6b1`.
 - `device`: [Loader accepted window 0x1c0000000 bytes at pa 0x8400200000 and HANDOFF EXIT RETURN 0; console output from XNU not yet observed.](https://github.com/Emilelu/UniXNU-mondrian/blob/c39ff292eee2726c0135f3ba3a98462c9c21d8de/docs/MEASURED-HIGH-WINDOW-2026-11-02.md)
-  Command: <code>fastboot boot /mnt/e/k60-work/candidates/7g/boot-ios16-7g-textonly.img</code>. Revision: `e06211de59325bbd086c312324bdbf40e21d1045`.
+  Command: <code>fastboot boot /mnt/e/iOS Port/Work/candidates/7g/boot-ios16-7g-textonly.img</code>. Revision: `e06211de59325bbd086c312324bdbf40e21d1045`.
 
 ## Storage and root {#storage}
 
